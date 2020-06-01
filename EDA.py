@@ -11,7 +11,7 @@ import networkx as nx
 import overpy
 import shapely.geometry as geometry
 from shapely.ops import linemerge, unary_union, polygonize
-%matplotlib inline
+#%matplotlib inline
 ox.config(use_cache=True, log_console=True)
 
 
@@ -55,15 +55,6 @@ for i in range(18):
 
 
 
-def clean_crash_data(df):
-
-    df = df[df['BICYCLE_COUNT'] > 0]
-    df = df[df['DEC_LAT'] < 40.3]
-
-    #df['LATITUDE'] = pd.to_numeric(df['LATITUDE'].str.split("\\s+|\.\\s*|\\:\\s*").str.join(""), downcast="float") / 10000000
-    #df['LONGITUDE'] = pd.to_numeric(df['LONGITUDE'].str.split("\\s+|\.\\s*|\\:\\s*").str.join(""), downcast="float") / 10000000
-    return df
-
 df_crash = clean_crash_data(df_crash)
 
 len(df_crash)
@@ -81,14 +72,7 @@ df_traffic.head()
 df_traffic.columns
 df_traffic.describe()
 df_traffic.plot(kind='scatter',x='X', y='Y',c='g')
-def clean_traffic(df):
-    an = df[df['X'] < df_crash['DEC_LONG'].max()]
-    an = an[an['X'] > df_crash['DEC_LONG'].min()]
-    an = an[an['Y'] < df_crash['DEC_LAT'].max()]
-    an = an[an['Y'] > df_crash['DEC_LAT'].min()]
-    in_philly = an.apply(lambda r: philly.contains(geometry.Point(r['X'], r['Y'])),axis=1)
-    an = an[in_philly]
-    return an
+
 help(df_traffic.apply)
 
 df_traffic_clean = clean_traffic(df_traffic)
@@ -126,19 +110,15 @@ import geopandas
 dir(gdf_edge)
 pd.set_option("display.max_rows", 101)
 len(gdf_edge)
+gdf_edge.maxspeed.apply(lambda x: [x]).str.join('|').str.get_dummies()
 df_edge = pd.DataFrame(gdf_edge)
 len(df_edge.explode('service'))
 df_edge.explode('service')
 
-def exploder(df):
-    for i in df.columns:
-        df = df.explode(i)
-    return df
 
 df_edge_exploded = exploder(df_edge)
 len(df_edge_exploded)
 df_edge.columns
 df_edge_exploded.maxspeed.unique()
-help(gdf_edge.)
 
 df_crash.columns
