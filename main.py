@@ -158,14 +158,15 @@ gdf_traffic.plot()
 k
 df_traffic.columns
 df_traffic.groupby(['closest_edge_u','closest_edge_v','setdate']).get_group((109729474,109729486,'2010/09/02 00:00:00+00'))
-df_traffic_grouped = df_traffic.groupby(['closest_edge_u','closest_edge_v','setdate']).agg({'road':'first', 'X':'first','Y':'first', 'setyear':'first', 'aadb':'sum', 'closest_edge':'first', 'closest_edge_poly':'first', 'closest_edge_u':'first', 'closest_edge_v':'first'})
-gdf_traffic_grouped = gpd.GeoDataFrame(df_traffic_grouped[['closest_edge_poly','aadb','road']])
+df_traffic_grouped = df_traffic.groupby(['closest_edge_u','closest_edge_v','setdate']).agg({'road':'first', 'setyear':'first','X':'first','Y':'first', 'setyear':'first', 'aadb':'sum', 'closest_edge':'first', 'closest_edge_poly':'first', 'closest_edge_u':'first', 'closest_edge_v':'first'})
+gdf_traffic_grouped = gpd.GeoDataFrame(df_traffic_grouped[['closest_edge_poly','aadb','road','setyear']])
 gdf_traffic_grouped['geometry'] = gdf_traffic_grouped['closest_edge_poly']
 gdf_traffic_grouped.describe()
 gdf_traffic_grouped[gdf_traffic_grouped['aadb'] > 3000]
+fig,ax = ox.plot_graph(G_undirected, node_zorder=2,node_size=0.03,node_alpha = 0.1,node_color='k', bgcolor='w', edge_linewidth=0.5,use_geom=True, axis_off=False,show=False, close=False)
+gdf_traffic_grouped[gdf_traffic_grouped['aadb'] == 234].plot(ax=ax)
 
-gdf_traffic_grouped[gdf_traffic_grouped['aadb'] > 3000].plot()
-gdf_traffic_grouped.plot()
+gdf_traffic_grouped[gdf_traffic_grouped['aadb'] == 354]
 
 scheme = mapclassify.Quantiles(gdf_traffic_grouped['aadb'],k=5)
 geoplot.choropleth(gdf_traffic_grouped, hue=gdf_traffic_grouped['aadb'],scheme=scheme,cmap='Greens')
