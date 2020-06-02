@@ -171,8 +171,13 @@ df_traffic_grouped_with_features.columns
 df_traffic_grouped_with_features.head()
 df_traffic_grouped_with_features = df_traffic_grouped_with_features.drop(['road','X','Y','closest_edge','closest_edge_u','closest_edge_v','setdate','closest_edge_poly'],axis=1)
 df_traffic_grouped_with_features.columns
-traffic_x = df_traffic_grouped_with_features.drop(['u','v','key','aadb','osmid','geometry'],axis=1)
-traffic_y = df_traffic_grouped_with_features['aadb']
+
+df_traffic_grouped_with_features_altered = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] < 2019]
+df_traffic_grouped_with_features_altered['aadb'].hist()
+
+
+traffic_x = df_traffic_grouped_with_features_altered.drop(['u','v','key','aadb','osmid','geometry'],axis=1)
+traffic_y = df_traffic_grouped_with_features_altered['aadb']
 
 reg = LinearRegression().fit(traffic_x.sort_index(axis=1),traffic_y)
 regr = RandomForestRegressor(max_depth=5, random_state=0)
@@ -185,7 +190,12 @@ df_edges_with_features.columns
 traffic_as_input = df_edges_with_features.drop(['u','v','key','osmid','geometry'],axis=1).sort_index(axis=1)
 df_edges['aadb_predictions'] = regr.predict(traffic_as_input)
 
-fig,ax = ox.plot_graph(G, node_zorder=2,node_size=0.03,edge_linewidth=df_edges['aadb_predictions']*.002,node_alpha = 0.1,node_color='k', bgcolor='w',use_geom=True, axis_off=False,show=False, close=False)
+G_with_traffic_weights = ox.graph_from_gdfs(df_nodes,df_edges)
+ox.plot.get_edge_colors_by_attr(G_with_traffic_weights,'aadb_predictions').shape()
+
+ec = ox.plot.get_edge_colors_by_attr(G_with_traffic_weights, 'aadb_predictions', cmap='plasma',num_bins=20)
+fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.03,edge_linewidth=df_edges['aadb_predictions']*.002,node_alpha = 0.1,node_color='k', bgcolor='w',use_geom=True, axis_off=False,show=False, close=False)
+fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.03,edge_linewidth=1,edge_color=ec,node_alpha = 0.5,node_color='k', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
 
 
 traffic_x
