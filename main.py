@@ -13,6 +13,10 @@ import fiona
 from time import time
 import mapclassify
 import geoplot
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+
 pip install mapclassify
 pip install geoplot
 
@@ -133,12 +137,10 @@ column_name_list = ['highway', 'surface', 'segregated', 'service', 'cycleway', '
 
 
 philly
-gedges = gpd.Dataframe({shape: philly})
+
+## loading data
 df_traffic = clean_traffic(load_traffic(),philly)
 df_crashes = clean_crashes(load_crashes(),philly)
-
-df_traffic.columns
-
 G = load_graph(name,north,south,east,west)
 G_undirected = G.to_undirected()
 df_nodes = ox.graph_to_gdfs(G_undirected,edges=False)
@@ -146,24 +148,62 @@ df_edges = ox.graph_to_gdfs(G_undirected,nodes=False)
 df_edges_with_features = edge_featurizer(df_edges,column_name_list)
 df_edges_with_features['oneway'] = df_edges_with_features['oneway']*1.0
 
+
+# give each traffic an edge, take a while
 t = time()
 give_each_traffic_an_edge(df_traffic,G_undirected)
 print(time()-t)
+
+
 df_traffic['closest_edge']
 df_traffic['closest_edge_poly'] = df_traffic.apply(lambda x: x['closest_edge'][3], axis=1)
-df_traffic['closest_edge_u'] = df_traffic.apply(lambda x: x['closest_edge'][0], axis=1)
-df_traffic['closest_edge_v'] = df_traffic.apply(lambda x: x['closest_edge'][1], axis=1)
+df_traffic['u'] = df_traffic.apply(lambda x: x['closest_edge'][0], axis=1)
+df_traffic['v'] = df_traffic.apply(lambda x: x['closest_edge'][1], axis=1)
 gdf_traffic = gpd.GeoSeries(df_traffic['closest_edge_poly'])
+
+
+df_traffic_grouped = df_traffic.groupby(['u','v','setdate']).agg({'road':'first', 'setyear':'first','X':'first','Y':'first', 'setyear':'first', 'aadb':'sum', 'closest_edge':'first', 'closest_edge_poly':'first', 'closest_edge_u':'first', 'closest_edge_v':'first'})
+df_traffic_grouped['key'] = 0
+df_traffic_grouped = df_traffic_grouped.reset_index()
+df_edges_with_features.head(1)
+df_traffic_grouped_with_features = pd.merge(df_traffic_grouped,df_edges_with_features, how = 'left', on=['u','v','key'])
+df_traffic_grouped_with_features.columns
+df_traffic_grouped_with_features.head()
+df_traffic_grouped_with_features = df_traffic_grouped_with_features.drop(['road','X','Y','closest_edge','closest_edge_u','closest_edge_v','setdate','closest_edge_poly'],axis=1)
+df_traffic_grouped_with_features.columns
+traffic_x = df_traffic_grouped_with_features.drop(['u','v','key','aadb','osmid','geometry'],axis=1)
+traffic_y = df_traffic_grouped_with_features['aadb']
+
+reg = LinearRegression().fit(traffic_x.sort_index(axis=1),traffic_y)
+regr = RandomForestRegressor(max_depth=5, random_state=0)
+regr.fit(traffic_x,traffic_y)
+np.array(traffic_y)/regr.predict(traffic_x.sort_index(axis=1))
+
+df_edges_with_features.columns
+df_edges_with_features['setyear'] = 2018
+df_edges_with_features.columns
+traffic_as_input = df_edges_with_features.drop(['u','v','key','osmid','geometry'],axis=1).sort_index(axis=1)
+df_edges['aadb_predictions'] = regr.predict(traffic_as_input)
+
+fig,ax = ox.plot_graph(G, node_zorder=2,node_size=0.03,edge_linewidth=df_edges['aadb_predictions']*.002,node_alpha = 0.1,node_color='k', bgcolor='w',use_geom=True, axis_off=False,show=False, close=False)
+
+
+traffic_x
+reg.coef_
+
+G_traffic = ox.utils_graph.graph_from_gdfs(df_nodes,df_traffic_grouped)
+
+
 gdf_traffic.plot()
 k
 df_traffic.columns
 df_traffic.groupby(['closest_edge_u','closest_edge_v','setdate']).get_group((109729474,109729486,'2010/09/02 00:00:00+00'))
-df_traffic_grouped = df_traffic.groupby(['closest_edge_u','closest_edge_v','setdate']).agg({'road':'first', 'setyear':'first','X':'first','Y':'first', 'setyear':'first', 'aadb':'sum', 'closest_edge':'first', 'closest_edge_poly':'first', 'closest_edge_u':'first', 'closest_edge_v':'first'})
 gdf_traffic_grouped = gpd.GeoDataFrame(df_traffic_grouped[['closest_edge_poly','aadb','road','setyear']])
 gdf_traffic_grouped['geometry'] = gdf_traffic_grouped['closest_edge_poly']
-gdf_traffic_grouped.describe()
+gdf_traffic_grouped
 gdf_traffic_grouped[gdf_traffic_grouped['aadb'] > 3000]
-fig,ax = ox.plot_graph(G_undirected, node_zorder=2,node_size=0.03,node_alpha = 0.1,node_color='k', bgcolor='w', edge_linewidth=0.5,use_geom=True, axis_off=False,show=False, close=False)
+fig,ax = ox.plot_graph(G_traffic, node_zorder=2,node_size=0.03,edge_linewidth=df_traffic_grouped['aadb']*.002,node_alpha = 0.1,node_color='k', bgcolor='w',use_geom=True, axis_off=False,show=False, close=False)
+
 gdf_traffic_grouped[gdf_traffic_grouped['aadb'] == 234].plot(ax=ax)
 
 gdf_traffic_grouped[gdf_traffic_grouped['aadb'] == 354]
