@@ -360,11 +360,43 @@ fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node
 
 fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['length']*.001,use_geom=True, axis_off=False,show=False, close=False)
 
-f = df_edges.length.mean() / df_edges.probability.mean()
-df_edges['balanced_weight'] = df_edges.apply(lambda x: x['length'] + x['probability']*f,axis=1)
+df_edges.length.mean()
+df_edges['length'].mean()
+f = df_edges['length'].mean() / df_edges['probability'].mean()
+df_edges['balanced_weight'] = df_edges.apply(lambda x: x['length'] + x['probability']*f*2,axis=1)
 df_edges[['length','probability','balanced_weight']].head(20)
 fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['balanced_weight']*.001,use_geom=True, axis_off=False,show=False, close=False)
+df_edges['length'].div(df_edges['balanced_weight']).mean()
+final_G = ox.graph_from_gdfs(df_nodes,df_edges)
+final_G = final_G.to_undirected()
 
+
+nx.number_connected_components(final_G)
+
+
+
+orig = ox.get_nearest_node(final_G,(south+(north-south)*.8,west+(east-west)*.8))
+dest = ox.get_nearest_node(final_G,(south+(north-south)*.2,west+(east-west)*.2))
+route_1 = nx.shortest_path(final_G,orig,dest,weight='length')
+route_2 = nx.shortest_path(final_G,orig,dest,weight='probability')
+route_3 = nx.shortest_path(final_G,orig,dest,weight='balanced_weight')
+
+route_1_length      = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_1,'length'))
+route_1_probability = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_1,'probability'))
+route_2_length      = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_2,'length'))
+route_2_probability = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_2,'probability'))
+route_3_length      = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_3,'length'))
+route_3_probability = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_3,'probability'))
+print('route 1 length: ' + str(route_1_length))
+print('route 1 prob  : ' + str(route_1_probability))
+print('route 2 length: ' + str(route_2_length))
+print('route 2 prob  : ' + str(route_2_probability))
+print('route 3 length: ' + str(route_3_length))
+print('route 3 prob  : ' + str(route_3_probability))
+
+ox.plot_graph_route(final_G, route_1, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*10, node_color='r', bgcolor ='k',route_color='b')
+ox.plot_graph_route(final_G, route_2, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*10, node_color='r', bgcolor ='k',route_color='g')
+ox.plot_graph_route(final_G, route_3, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*10, node_color='r', bgcolor ='k',route_color='y')
 
 
 df_edges.iloc[0][['u','v']]
