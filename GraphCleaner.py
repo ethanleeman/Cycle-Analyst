@@ -22,7 +22,7 @@ ox.plot_graph(G_simple, node_zorder=2,node_size=10,node_alpha =1,node_color='r',
 
 
 edges= ox.graph_to_gdfs(G_simple,nodes=False)
-edges.head()
+edges.length.head()
 edges.length.describe()
 
 help(edges.geometry[3].wkb)

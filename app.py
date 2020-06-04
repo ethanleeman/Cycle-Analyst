@@ -5,7 +5,7 @@ import pandas as pd
 import networkx as nx
 import osmnx as ox
 from streamlit import caching
-# caching.clear_cache()
+caching.clear_cache()
 
 #
 def get_node_df(location):
@@ -78,7 +78,7 @@ def get_map():
     G = ox.load_graphml(filepath='./philadelphia.graphml')
     return G
 #
-@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
+#@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
 def get_gdfs():
     #Returns: nodes and edges from pickle
     #Cached by Streamlit
@@ -465,18 +465,18 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     shortest_route = nx.shortest_path(G, start_node, end_node, weight = 'length')
     short_start_lat, short_start_lon, short_dest_lat, short_dest_lon = nodes_to_lats_lons(gdf_nodes, shortest_route)
     short_df = pd.DataFrame({'startlat':short_start_lat, 'startlon':short_start_lon, 'destlat': short_dest_lat, 'destlon':short_dest_lon})
-    short_layer = make_linelayer(short_df, '[200,200,200]')
+    short_layer = make_linelayer(short_df, '[200,000,000]')
 
 
     safe_route = nx.shortest_path(G, start_node, end_node, weight = 'probability')
     safe_start_lat, safe_start_lon, safe_dest_lat, safe_dest_lon = nodes_to_lats_lons(gdf_nodes, safe_route)
     safe_df = pd.DataFrame({'startlat':safe_start_lat, 'startlon':safe_start_lon, 'destlat': safe_dest_lat, 'destlon':safe_dest_lon})
-    safe_layer = make_linelayer(safe_df, '[200,0,0]')
+    safe_layer = make_linelayer(safe_df, '[000,200,0]')
 
     balanced_route = nx.shortest_path(G, start_node, end_node, weight = 'balanced_weight')
     balanced_start_lat, balanced_start_lon, balanced_dest_lat, balanced_dest_lon = nodes_to_lats_lons(gdf_nodes, balanced_route)
     balanced_df = pd.DataFrame({'startlat':balanced_start_lat, 'startlon':balanced_start_lon, 'destlat': balanced_dest_lat, 'destlon':balanced_dest_lon})
-    balanced_layer = make_linelayer(balanced_df, '[200,0,200]')
+    balanced_layer = make_linelayer(balanced_df, '[200,200,00]')
 
     #This finds the bounds of the final map to show based on the paths
     min_x, max_x, min_y, max_y = get_map_bounds(gdf_nodes, shortest_route, safe_route,balanced_route)
@@ -505,22 +505,23 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     route_2_probability = sum(ox.utils_graph.get_route_edge_attributes(G,safe_route,'probability'))
     route_3_length      = sum(ox.utils_graph.get_route_edge_attributes(G,balanced_route,'length'))
     route_3_probability = sum(ox.utils_graph.get_route_edge_attributes(G,balanced_route,'probability'))
-    st.write('Short Route length: ' + str(route_1_length) + ' meters')
-    st.write('Short Route prob  : ' + str(route_1_probability) + ' once in ' + str(int(1/route_1_probability)) +' rides')
-    st.write('Safe Route length: ' + str(route_2_length)  + ' meters')
-    st.write('Safe Route prob  : ' + str(route_2_probability) + ' once in ' + str(int(1/route_2_probability))+' rides')
-    st.write('Balanced Route length: ' + str(route_3_length)  + ' meters')
-    st.write('Balanced Route prob  : ' + str(route_3_probability) + ' once in ' + str(int(1/route_3_probability))+' rides')
+    st.write('The red is the fastest, green is the safest, yellow is a balance.')
+    st.write('Short Route (red)  length     : ' + str(int(route_1_length)) + ' meters')
+    st.write('Short Route (red)  prob       : once in ' + str(int(1/route_1_probability)) +' rides')
+    st.write('Safe Route (green) length     : ' + str(int(route_2_length))  + ' meters')
+    st.write('Safe Route (green) prob       : once in ' + str(int(1/route_2_probability))+' rides')
+    st.write('Balanced Route (yellow) length: ' + str(int(route_3_length))  + ' meters')
+    st.write('Balanced Route (yellow) prob  : once in ' + str(int(1/route_3_probability))+' rides')
 
 
-    st.write('The Grey is the fastest, Red is the Safest, Purple is a balance.')
+
     return
 #
 # ############################################################################
 
-G = get_map()
-gdf_nodes, gdf_edges = get_gdfs()
 
+gdf_nodes, gdf_edges = get_gdfs()
+G = ox.graph_from_gdfs(gdf_nodes,gdf_edges)
 # #Main
 st.header("Philadelphia Commutator")
 st.header("")

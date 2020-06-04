@@ -371,15 +371,34 @@ final_G = ox.graph_from_gdfs(df_nodes,df_edges)
 final_G = final_G.to_undirected()
 
 
-nx.number_connected_components(final_G)
+df_edges_final_one_way.head()
+df_edges_final_one_way_with_weights.iloc[-1]['probability_x'] == np.NaN
 
+df_edges.head()
+
+len(df_edges_final_one_way)
+len(df_edges)
+
+df_edges_final_one_way = ox.graph_to_gdfs(load_graph(name,north,south,east,west),nodes=False)
+df_edges_final_one_way_with_weights = pd.merge(df_edges_final_one_way,df_edges[['u','v','probability','balanced_weight']],how='left',on=['u','v'])
+df_edges_swapped = df_edges.copy()
+df_edges_swapped['t'] = df_edges_swapped['u']
+df_edges_swapped['u'] = df_edges_swapped['v']
+df_edges_swapped['v'] = df_edges_swapped['t']
+df_edges_final_one_way_with_weights = pd.merge(df_edges_final_one_way_with_weights,df_edges_swapped[['u','v','probability','balanced_weight']],how='left',on=['u','v'])
+df_edges_final_one_way_with_weights['probability'] = df_edges_final_one_way_with_weights.fillna(0)[['probability_x','probability_y']].max(axis=1)
+df_edges_final_one_way_with_weights['balanced_weight'] = df_edges_final_one_way_with_weights.fillna(0)[['balanced_weight_x','balanced_weight_y']].max(axis=1)
+
+final_G = ox.graph_from_gdfs(df_nodes,df_edges_final_one_way_with_weights)
 
 
 orig = ox.get_nearest_node(final_G,(south+(north-south)*.8,west+(east-west)*.8))
-dest = ox.get_nearest_node(final_G,(south+(north-south)*.2,west+(east-west)*.2))
+dest = ox.get_nearest_node(final_G,(south+(north-south)*.2,west+(east-west)*.7))
 route_1 = nx.shortest_path(final_G,orig,dest,weight='length')
 route_2 = nx.shortest_path(final_G,orig,dest,weight='probability')
 route_3 = nx.shortest_path(final_G,orig,dest,weight='balanced_weight')
+
+ox.graph_to_gdfs(final_G,nodes=False)
 
 route_1_length      = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_1,'length'))
 route_1_probability = sum(ox.utils_graph.get_route_edge_attributes(final_G,route_1,'probability'))
@@ -394,10 +413,46 @@ print('route 2 prob  : ' + str(route_2_probability))
 print('route 3 length: ' + str(route_3_length))
 print('route 3 prob  : ' + str(route_3_probability))
 
-ox.plot_graph_route(final_G, route_1, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*10, node_color='r', bgcolor ='k',route_color='b')
-ox.plot_graph_route(final_G, route_2, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*10, node_color='r', bgcolor ='k',route_color='g')
-ox.plot_graph_route(final_G, route_3, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*10, node_color='r', bgcolor ='k',route_color='y')
+ox.plot_graph_route(final_G, route_1, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*7, node_color='r', bgcolor ='k',route_color='b')
+ox.plot_graph_route(final_G, route_2, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*7, node_color='r', bgcolor ='k',route_color='g')
+ox.plot_graph_route(final_G, route_3, route_linewidth =  6, node_size = df_nodes['number_of_accidents']*7, node_color='r', bgcolor ='k',route_color='y')
 
+help(ox.io.save_graph_xml)
+ox.io.save_graph_xml(final_G,'./philadelphia.graphxml')
+df_nodes.to_pickle('./nodes.pkl',protocol = 4)
+df_edges_final_one_way_with_weights.to_pickle('./edges.pkl',protocol = 4)
+
+df_edges['probability_x10000'] = df_edges['probability'] *10000
+df_edges.dtypes
+
+nx.shortest_path(final_G, orig, dest, weight = 'probability')
+
+pd.read_pickle('nodes.pkl')
+
+
+
+
+df_traffic_grouped_with_features['setyear'].hist()
+df_traffic_test = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] == 2016]
+len(df_traffic_test)
+df_crashes_test = df_crashes[df_crashes['CRASH_YEAR'] == 2016]
+
+df_nodes_copy = df_nodes.copy()
+number_of_crashes_at_a_node(df_crashes_test,G_with_traffic_weights,df_nodes_copy,prefix = 'test_')
+df_nodes_copy['number_of_accidentstest_'].sum()
+
+df_traffic_test['accidents_on_edge'] = df_traffic_test.apply(lambda r: df_nodes_copy.loc[r['u']]['number_of_accidentstest_'] + df_nodes_copy.loc[r['v']]['number_of_accidentstest_'],axis=1)
+
+df_traffic_test
+
+df_nodes_copy.head()
+df_traffic_test.head()
+
+#G_for_test = ox.graph_from_gdfs(df_nodes_copy,df_edges)
+
+
+len(df_crashes_test)
+df_crashes_test.head()
 
 df_edges.iloc[0][['u','v']]
 ox.graph_to_gdfs(G_with_traffic_weights,edges=False)
@@ -464,7 +519,8 @@ nx.edges(G,7244251137)
 help(G_undirected.has_edge)
 G_undirected.edges()
 
-
+df = pd.DataFrame({'A': [1,2,3],'B':[2,3,4]})
+df.A
 
 fig,ax = ox.plot_graph(G_undirected, node_zorder=2,node_size=0.03,node_alpha = 0.1,node_color='k', bgcolor='w', edge_linewidth=1,use_geom=True, axis_off=False,show=False, close=False)
 #ax=df_crashes.plot(kind='scatter',x='DEC_LONG',y='DEC_LAT',s=1,fig=fig,label='Bike Accident',ax=ax)
