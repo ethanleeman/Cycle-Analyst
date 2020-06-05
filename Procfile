@@ -1,1 +1,1 @@
-web: sh setup.sh && streamlit run walkwize.py
+web: sh setup.sh && streamlit run app.py
