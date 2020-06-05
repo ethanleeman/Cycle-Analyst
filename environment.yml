@@ -1,4 +1,4 @@
-name: walkwize
+name: app
 channels:
 - conda-forge
 dependencies:
