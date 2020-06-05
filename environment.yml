@@ -1,0 +1,16 @@
+name: walkwize
+channels:
+- conda-forge
+dependencies:
+- python=3.7
+- conda
+- pandas
+- matplotlib
+- numpy
+- scipy
+- scikit-learn
+- networkx
+- osmnx
+- pip
+- pip:
+  - streamlit
