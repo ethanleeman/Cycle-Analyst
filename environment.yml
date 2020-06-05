@@ -1,4 +1,4 @@
-name: app
+name: BadTurnBike
 channels:
 - conda-forge
 dependencies:
