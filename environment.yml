@@ -5,11 +5,13 @@ dependencies:
 - python=3.7
 - conda
 - pandas
+- geopandas
 - matplotlib
 - numpy
 - scipy
 - scikit-learn
 - osmnx
+- rtree
 - pip
 - pip:
   - streamlit
