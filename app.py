@@ -55,6 +55,17 @@ def make_iconlayer(df):
 #         get_position='[lon, lat]')
 #
 
+
+
+def make_accidentlayer(df, color_array):
+        return pdk.Layer(
+            type='ScatterplotLayer',
+            data=df,
+            opacity=0.1,
+            get_position = ['x','y'],
+            get_fill_color = color_array,
+            get_radius='accidents_scaled')
+
 def make_linelayer(df, color_array):
     #Inputs: df with [startlat, startlon, destlat, destlon] and font color as str([R,G,B]) - yes '[R,G,B]'
     #Plots lines between each line's [startlon, startlat] and [destlon, destlat]
@@ -78,7 +89,7 @@ def get_map():
     G = ox.load_graphml(filepath='./philadelphia.graphml')
     return G
 #
-#@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
+@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
 def get_gdfs():
     #Returns: nodes and edges from pickle
     #Cached by Streamlit
@@ -495,9 +506,11 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     icon_layer = make_iconlayer(start_node_df)
     optimized_layer = make_linelayer(opt_df, '[50,220,50]')
 
+    accident_layer = make_accidentlayer(gdf_nodes[gdf_nodes['number_of_accidents']>0][['accidents_scaled','x','y']],'[0,250,250]')
+
     st.pydeck_chart(pdk.Deck(
         initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),
-        layers=[short_layer,safe_layer,balanced_layer, icon_layer]))
+        layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer]))
 
     route_1_length      = sum(ox.utils_graph.get_route_edge_attributes(G,shortest_route,'length'))
     route_1_probability = sum(ox.utils_graph.get_route_edge_attributes(G,shortest_route,'probability'))
@@ -521,6 +534,8 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
 
 
 gdf_nodes, gdf_edges = get_gdfs()
+gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
+
 G = ox.graph_from_gdfs(gdf_nodes,gdf_edges)
 # #Main
 st.header("Philadelphia Commutator")

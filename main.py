@@ -20,126 +20,26 @@ from sklearn.ensemble import RandomForestRegressor
 pip install mapclassify
 pip install geoplot
 
-name = 'Philadelphia, Pennsylvania, USA'
-north = 39.9811
-south = 39.9228
-east = -75.1417
-west = -75.2309
-query = """[out:json][timeout:25];
-rel(188022);
-out body;
->;
-out skel qt; """
-api = overpy.Overpass()
-result = api.query(query)
-
-lss = [] #convert ways to linstrings
-
-for ii_w,way in enumerate(result.ways):
-    ls_coords = []
-
-    for node in way.nodes:
-        ls_coords.append((node.lon,node.lat)) # create a list of node coordinates
-
-    lss.append(geometry.LineString(ls_coords)) # create a LineString from coords
 
 
-merged = linemerge([*lss]) # merge LineStrings
-borders = unary_union(merged) # linestrings to a MultiLineString
-polygons = list(polygonize(borders))
-philly = geometry.MultiPolygon(polygons)
 
 
 ox.settings.useful_tags_path = ['route','lcn','segregated','rcn','rcn_ref','lcn_ref','bridge','tunnel','oneway','lanes','highway','maxspeed','service','access','area','landuse','width','est_width','junction','cycleway:right','cycleway:left','surface','cycleway','cycleway:both']
 
 
-def load_graph(name,north=None,south=None,east=None,west=None):
-    pickle_path = './' +name+'.gpickle'
-    if os.path.exists(pickle_path):
-        graph = nx.read_gpickle(pickle_path)
-    else:
-        graph = ox.graph_from_place(name, network_type='bike',simplify=True)
-        nx.write_gpickel(G, pickle_path)
-    if north is not None:
-        return ox.truncate.truncate_graph_bbox(graph,north,south,east,west)
-    return graph
 
 
-def load_polygon(name,query):
-    pass
 polygon = philly
 
-def load_crashes():
-    df_crash = pd.read_csv('./RawData/PHILADELPHIA_1999/CRASH_1999_Philadelphia.csv')
-    for i in range(18):
-        s = str(i)
-        if i < 10:
-            s = '0' + str(s)
-        path = './RawData/PHILADELPHIA_20' + s +'/CRASH_20'+ s + '_Philadelphia.csv'
-        df_to_merge = pd.read_csv(path)
-        df_crash = pd.concat([df_crash,df_to_merge])
-    return df_crash
-
-def load_traffic():
-    return pd.read_csv('./RawData/DVRPC_Bicycle_Counts.csv')
-
-def clean_crashes(df,polygon):
-    an = df.copy()
-    an = an[an['BICYCLE_COUNT'] > 0]
-    in_location = an.apply(lambda r: polygon.contains(geometry.Point(r['DEC_LONG'], r['DEC_LAT'])),axis=1)
-    an = an[in_location]
-    if north is not None:
-        an = an[an['DEC_LONG'] < east]
-        an = an[an['DEC_LONG'] > west]
-        an = an[an['DEC_LAT'] < north]
-        an = an[an['DEC_LAT'] > south]
-    return an
-
-def clean_traffic(df,polygon):
-    an = df.copy()
-    if north is not None:
-        an = an[an['X'] < east]
-        an = an[an['X'] > west]
-        an = an[an['Y'] < north]
-        an = an[an['Y'] > south]
-    in_location = an.apply(lambda r: polygon.contains(geometry.Point(r['X'], r['Y'])),axis=1)
-    an = an[in_location]
-    return an
-
-
-def exploder_one_hot(df,column_name_list):
-    to_concat = [df.copy()]
-    for col in column_name_list:
-        to_concat.append(df[col].apply(lambda x: [x]).str.join('|').str.get_dummies().add_prefix(col + ":"))
-        #return df[col].apply(lambda x: [x]).str.join('|').str.get_dummies()
-    return pd.concat(to_concat,axis=1).drop(column_name_list,axis=1)
-
-def edge_featurizer(df,column_name_list):
-    an = exploder_one_hot(df,column_name_list)
-    an['x'] = an.apply(lambda r: r.geometry.centroid.x, axis=1)
-    an['y'] = an.apply(lambda r: r.geometry.centroid.y, axis=1)
-    return an
 
 
 
 
 
-def traffic_func(r,G):
-    return ox.get_nearest_edge(G,(r['Y'],r['X']),return_geom = True,return_dist = True)
 
 
-def give_each_traffic_an_edge(df_traffic,G):
-    df_traffic['closest_edge'] = df_traffic.apply(lambda x : traffic_func(x,G),axis=1)
 
-def crash_func(r,G):
-    return ox.get_nearest_node(G,(r['DEC_LAT'],r['DEC_LONG']))
 
-def tag_crashes(df_crash,G,df_nodes,prefix=''):
-    df_crash['nearest_node'] = df_crash.apply(lambda x: crash_func(x,G),axis=1)
-
-def number_of_crashes_at_a_node(df_crash,G,df_nodes,prefix=''):
-    s_counts = df_crash['nearest_node'].value_counts()
-    df_nodes['number_of_accidents' + prefix] = df_nodes.apply(lambda x: s_counts[x['osmid']] if x['osmid'] in s_counts.index else 0,axis=1)
 
 
 def beta_values(mean,std):
@@ -152,51 +52,9 @@ column_name_list = ['highway', 'surface', 'segregated', 'service', 'cycleway', '
         'tunnel', 'bridge', 'rcn_ref', 'width', 'junction']
 
 
-philly
-
-## loading data
-df_traffic = clean_traffic(load_traffic(),philly)
-df_crashes = clean_crashes(load_crashes(),philly)
-G = load_graph(name,north,south,east,west)
-G_undirected = G.to_undirected()
-df_nodes = ox.graph_to_gdfs(G_undirected,edges=False)
-df_edges = ox.graph_to_gdfs(G_undirected,nodes=False)
-df_edges_with_features = edge_featurizer(df_edges,column_name_list)
-df_edges_with_features['oneway'] = df_edges_with_features['oneway']*1.0
 
 
-# give each traffic an edge, take a while
-t = time()
-give_each_traffic_an_edge(df_traffic,G_undirected)
-print(time()-t)
-
-
-df_traffic['closest_edge']
-df_traffic['closest_edge_poly'] = df_traffic.apply(lambda x: x['closest_edge'][3], axis=1)
-df_traffic['u'] = df_traffic.apply(lambda x: x['closest_edge'][0], axis=1)
-df_traffic['v'] = df_traffic.apply(lambda x: x['closest_edge'][1], axis=1)
-gdf_traffic = gpd.GeoSeries(df_traffic['closest_edge_poly'])
-
-df_traffic_grouped.head()
-df_traffic_grouped = df_traffic.groupby(['u','v','setdate']).agg({'road':'first', 'X':'first','Y':'first', 'setyear':'first', 'aadb':'sum', 'closest_edge':'first', 'closest_edge_poly':'first'})
-df_traffic_grouped['key'] = 0
-df_traffic_grouped = df_traffic_grouped.reset_index()
-df_edges_with_features.head(1)
-df_traffic_grouped_with_features = pd.merge(df_traffic_grouped,df_edges_with_features, how = 'left', on=['u','v','key'])
-df_traffic_grouped_with_features.columns
-df_traffic_grouped_with_features.head()
-df_traffic_grouped_with_features = df_traffic_grouped_with_features.drop(['road','X','Y','closest_edge','setdate','closest_edge_poly'],axis=1)
-df_traffic_grouped_with_features.columns
-
-df_traffic_grouped_with_features_altered = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] < 2019]
-df_traffic_grouped_with_features_altered['aadb'].hist()
-
-df_traffic_grouped_with_features_altered = df_traffic_grouped_with_features_altered[df_traffic_grouped_with_features_altered['setyear'] != 2018]
-
-traffic_x = df_traffic_grouped_with_features_altered.drop(['u','v','key','aadb','osmid','geometry'],axis=1)
-traffic_y = df_traffic_grouped_with_features_altered['aadb']
-
-reg = LinearRegression().fit(traffic_x.sort_index(axis=1),traffic_y)
+#reg = LinearRegression().fit(traffic_x.sort_index(axis=1),traffic_y)
 regr = RandomForestRegressor(max_depth=10, random_state=0)
 regr.fit(traffic_x,traffic_y)
 np.array(traffic_y)/regr.predict(traffic_x.sort_index(axis=1))
@@ -306,67 +164,64 @@ fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.03,edge
 # fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.03,edge_linewidth=df_edges['aadb_predictions']*.002,node_alpha = 0.1,node_color='k', bgcolor='w',use_geom=True, axis_off=False,show=False, close=False)
 # fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.03,edge_linewidth=1,edge_color=ec,node_alpha = 0.5,node_color='k', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
 
-tag_crashes(df_crashes,G_with_traffic_weights,df_nodes)
-
-df_crashes_train = df_crashes[df_crashes['CRASH_YEAR'] != 2018]
-
-number_of_crashes_at_a_node(df_crashes_train,G_with_traffic_weights,df_nodes)
-df_nodes.head()
-G_with_traffic_weights = ox.utils_graph.graph_from_gdfs(df_nodes,df_traffic_grouped)
-fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['number_of_accidents'],edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
-df_nodes.head(1)
-df_edges.head(1)
-G_with_traffic_weights = ox.graph_from_gdfs(df_nodes,df_edges)
-df_traffic_grouped[df_traffic_grouped['v'] ==109729474 ]
-G_with_traffic_weights.degree(109729474)
-G_with_traffic_weights.degree(109729474,weight='aadb_predictions')
-df_nodes['aadb'] = df_nodes.apply(lambda x: G_with_traffic_weights.degree(x['osmid'],weight='aadb_predictions'), axis=1)
-df_nodes[df_nodes['osmid'] == 109729474]
-
-## 1999 to 2016 is 17 years, 365 days
-df_nodes['accidents/aadb'] = df_nodes['number_of_accidents'].div(df_nodes['aadb']) /365/17
-
-fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['number_of_accidents'],edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
-fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['accidents/aadb']*10000000,edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
 
 
-df_nodes['aadb'].hist()
-df_nodes['number_of_accidents'].hist()
-df_nodes['accidents/aadb'].std()
+#G_with_traffic_weights = ox.utils_graph.graph_from_gdfs(df_nodes,df_traffic_grouped)
+#fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['number_of_accidents'],edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
 
-df_nodes['accidents/aadb'].mean()
+# G_with_traffic_weights = ox.graph_from_gdfs(df_nodes,df_edges)
+#
+#
+# df_traffic_grouped[df_traffic_grouped['v'] ==109729474 ]
+# G_with_traffic_weights.degree(109729474)
+# G_with_traffic_weights.degree(109729474,weight='aadb_predictions')
+# df_nodes['aadb'] = df_nodes.apply(lambda x: G_with_traffic_weights.degree(x['osmid'],weight='aadb_predictions'), axis=1)
+# df_nodes[df_nodes['osmid'] == 109729474]
+#
+# ## 1999 to 2016 is 17 years, 365 days
+# df_nodes['accidents/aadb'] = df_nodes['number_of_accidents'].div(df_nodes['aadb']) /365/17
+#
+# fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['number_of_accidents'],edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
+# fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['accidents/aadb']*10000000,edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
+#
+#
+# df_nodes['aadb'].hist()
+# df_nodes['number_of_accidents'].hist()
+# df_nodes['accidents/aadb'].std()
+#
+# df_nodes['accidents/aadb'].mean()
+#
+# alpha,beta = beta_values(df_nodes['accidents/aadb'].mean(),df_nodes['accidents/aadb'].std())
+# df_nodes['adjusted accidents/aadb'] = (df_nodes['number_of_accidents']+alpha).div(df_nodes['aadb']+alpha+beta)
+#
+#
+# def probability_func(r,df_nodes):
+#     u = r['u']
+#     v = r['v']
+#     return df_nodes.loc[u]['adjusted accidents/aadb'] + df_nodes.loc[v]['adjusted accidents/aadb']
+#
+# def give_probabilities_to_edges(df_edges,df_nodes):
+#     df_edges['probability'] = df_edges.apply(lambda x: probability_func(x,df_nodes),axis=1)
+#
+#
+#
+# give_probabilities_to_edges(df_edges,df_nodes)
+#
+# df_edges.head()
+# fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['adjusted accidents/aadb']*1000000,edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
+#
+# fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['probability']*70000,use_geom=True, axis_off=False,show=False, close=False)
+#
+#
+# fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['length']*.001,use_geom=True, axis_off=False,show=False, close=False)
 
-alpha,beta = beta_values(df_nodes['accidents/aadb'].mean(),df_nodes['accidents/aadb'].std())
-df_nodes['adjusted accidents/aadb'] = (df_nodes['number_of_accidents']+alpha).div(df_nodes['aadb']+alpha+beta)
-
-
-def probability_func(r,df_nodes):
-    u = r['u']
-    v = r['v']
-    return df_nodes.loc[u]['adjusted accidents/aadb'] + df_nodes.loc[v]['adjusted accidents/aadb']
-
-def give_probabilities_to_edges(df_edges,df_nodes):
-    df_edges['probability'] = df_edges.apply(lambda x: probability_func(x,df_nodes),axis=1)
-
-
-
-give_probabilities_to_edges(df_edges,df_nodes)
-
-df_edges.head()
-fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=df_nodes['adjusted accidents/aadb']*1000000,edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
-
-fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['probability']*70000,use_geom=True, axis_off=False,show=False, close=False)
-
-
-fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['length']*.001,use_geom=True, axis_off=False,show=False, close=False)
-
-df_edges.length.mean()
-df_edges['length'].mean()
-f = df_edges['length'].mean() / df_edges['probability'].mean()
-df_edges['balanced_weight'] = df_edges.apply(lambda x: x['length'] + x['probability']*f*2,axis=1)
-df_edges[['length','probability','balanced_weight']].head(20)
-fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['balanced_weight']*.001,use_geom=True, axis_off=False,show=False, close=False)
-df_edges['length'].div(df_edges['balanced_weight']).mean()
+# df_edges.length.mean()
+# df_edges['length'].mean()
+# f = df_edges['length'].mean() / df_edges['probability'].mean()
+# df_edges['balanced_weight'] = df_edges.apply(lambda x: x['length'] + x['probability']*f*2,axis=1)
+# df_edges[['length','probability','balanced_weight']].head(20)
+# fig,ax = ox.plot_graph(G_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['balanced_weight']*.001,use_geom=True, axis_off=False,show=False, close=False)
+# df_edges['length'].div(df_edges['balanced_weight']).mean()
 final_G = ox.graph_from_gdfs(df_nodes,df_edges)
 final_G = final_G.to_undirected()
 
@@ -392,8 +247,8 @@ df_edges_final_one_way_with_weights['balanced_weight'] = df_edges_final_one_way_
 final_G = ox.graph_from_gdfs(df_nodes,df_edges_final_one_way_with_weights)
 
 
-orig = ox.get_nearest_node(final_G,(south+(north-south)*.8,west+(east-west)*.8))
-dest = ox.get_nearest_node(final_G,(south+(north-south)*.2,west+(east-west)*.7))
+orig = ox.get_nearest_node(final_G,(south+(north-south)*.5,west+(east-west)*.5))
+dest = ox.get_nearest_node(final_G,(south+(north-south)*.2,west+(east-west)*.2))
 route_1 = nx.shortest_path(final_G,orig,dest,weight='length')
 route_2 = nx.shortest_path(final_G,orig,dest,weight='probability')
 route_3 = nx.shortest_path(final_G,orig,dest,weight='balanced_weight')
