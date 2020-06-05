@@ -1,4 +1,5 @@
 streamlit==0.59
 networkx==2.4
 osmnx==0.13.0
-libspatialindex==1.9.3
+geopandas
+rtree
