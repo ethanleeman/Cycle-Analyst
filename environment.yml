@@ -10,6 +10,7 @@ dependencies:
 - scipy
 - scikit-learn
 - osmnx
+- libspatialindex
 - pip
 - pip:
   - streamlit
