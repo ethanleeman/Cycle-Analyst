@@ -13,4 +13,5 @@ dependencies:
 - pip
 - pip:
   - streamlit
+- pip:
   - networkx
