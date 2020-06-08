@@ -1,5 +1,5 @@
 streamlit==0.59
 networkx==2.4
+rtree
 osmnx==0.13.0
 geopandas
-rtree
