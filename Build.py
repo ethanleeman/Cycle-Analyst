@@ -66,7 +66,9 @@ fig,ax = ox.plot_graph(G_undirected, node_zorder=2,node_size=0.03,node_alpha = 0
 ax=df_bike_accidents_in_region.plot(kind='scatter',x='DEC_LONG',y='DEC_LAT',s=1,fig=fig,label='Bike Accident',ax=ax,color='r')
 ax = df_traffic_studies_in_region.plot(title='Plotting the 3 Main Datasets',kind='scatter',x='X',y='Y',s=1,c='g',label='Traffic Study',fig=fig,ax=ax)
 
-df_traffic_studies_in_region.columns
+import libspatialindex
+rtree.__version__
+df_traffic_studies_in_region.setyear.describe()
 df_traffic_studies_in_region.plot.scatter(x='setyear',y = 'aadb')
 
 
@@ -150,6 +152,7 @@ def beta_values(mean,std):
     alpha = ((1-mean)/std/std -(1 / mean))* mean * mean
     beta = alpha*(1/mean - 1)
     return alpha,beta
+
 
 
 alpha,beta = beta_values(df_nodes['accidents/aadb'].mean(),df_nodes['accidents/aadb'].std())
@@ -307,3 +310,4 @@ final_eval.head()
 ox.graph_to_gdfs(final_G,nodes=False)['probability']
 
 final_eval['probability']
+alpha,beta
