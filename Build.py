@@ -60,14 +60,15 @@ df_bike_accidents_in_region = DataCleaner.clean_crashes(df_all_traffic_accidents
 df_traffic_studies_in_region = DataCleaner.clean_traffic(df_all_traffic_studies,polygon,north,south,east,west)
 df_undirected_edges_with_features = DataCleaner.edge_featurizer(df_edges_undirected,column_name_list)
 
-len(df_traffic_studies_in_region)
 
+len(df_traffic_studies_in_region)
+len(df_bike_accidents_in_region)
+
+## some plots
 fig,ax = ox.plot_graph(G_undirected, node_zorder=2,node_size=0.03,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=0.4,use_geom=True, axis_off=False,show=False, close=False)
 ax=df_bike_accidents_in_region.plot(kind='scatter',x='DEC_LONG',y='DEC_LAT',s=1,fig=fig,label='Bike Accident',ax=ax,color='r')
 ax = df_traffic_studies_in_region.plot(title='Plotting the 3 Main Datasets',kind='scatter',x='X',y='Y',s=1,c='g',label='Traffic Study',fig=fig,ax=ax)
 
-import libspatialindex
-rtree.__version__
 df_traffic_studies_in_region.setyear.describe()
 df_traffic_studies_in_region.plot.scatter(x='setyear',y = 'aadb')
 
@@ -78,7 +79,6 @@ df_bike_accidents_in_region.plot.scatter(x='DEC_LONG',y='DEC_LAT',s=0.5)
 df_traffic_studies_in_region['closest_edge'] = Tagger.give_each_traffic_an_edge(df_traffic_studies_in_region,G_undirected)
 df_save1 = df_traffic_studies_in_region.copy()
 df_traffic_studies_in_region = df_save1.copy()
-
 
 
 df_traffic_studies_in_region['closest_edge_poly'] = df_traffic_studies_in_region.apply(lambda x: x['closest_edge'][3], axis=1)
@@ -92,16 +92,25 @@ df_traffic_grouped = df_traffic_studies_in_region.groupby(['u','v','setdate']).a
 df_traffic_grouped['key'] = 0
 df_traffic_grouped = df_traffic_grouped.reset_index()
 
-df_undirected_edges_with_features.head()
 
 df_traffic_grouped_with_features = pd.merge(df_traffic_grouped,df_undirected_edges_with_features, how = 'left', on=['u','v','key'])
 df_traffic_grouped_with_features = df_traffic_grouped_with_features.drop(['road','X','Y','closest_edge','setdate','closest_edge_poly'],axis=1)
 df_traffic_grouped_with_features = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] < 2019]
 
 
-## train/test split
-df_traffic_grouped_with_features_train = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] != 2016]
+df_traffic_grouped_with_features_no_encoding = pd.merge(df_traffic_grouped,df_edges_undirected, how = 'left', on=['u','v','key'])
+df_traffic_grouped_with_features_no_encoding = df_traffic_grouped_with_features_no_encoding.drop(['road','closest_edge','setdate','closest_edge_poly'],axis=1)
+df_traffic_grouped_with_features_no_encoding = df_traffic_grouped_with_features_no_encoding[df_traffic_grouped_with_features_no_encoding['setyear'] < 2019]
 
+df_traffic_grouped_with_features_no_encoding.head(1)
+
+
+df_traffic_grouped_with_features.to_csv('./CleanedData/traffic_studies_with_features')
+df_traffic_grouped_with_features_no_encoding.to_csv('./CleanedData/traffic_studies_with_features_no_encoding')
+
+## train/test split
+#df_traffic_grouped_with_features_train = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] != 2016]
+df_traffic_grouped_with_features_train = df_traffic_grouped_with_features
 
 df_undirected_edges_with_features.columns
 df_edges_directed.drop(['u','v','key','osmid'],axis=1).count() / 25256
@@ -118,7 +127,7 @@ np.array(traffic_y)/regr.predict(traffic_x.sort_index(axis=1))
 ## Apply model to edges in network
 df_undirected_edges_with_features['setyear'] = 2018
 traffic_as_input = df_undirected_edges_with_features.drop(['u','v','key','osmid','geometry'],axis=1).sort_index(axis=1)
-df_edges['aadb_predictions'] = regr.predict(traffic_as_input)
+df_edges_undirected['aadb_predictions'] = regr.predict(traffic_as_input)
 
 G_undirected_with_traffic_weights = ox.graph_from_gdfs(df_nodes,df_edges)
 
@@ -129,6 +138,8 @@ fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_siz
 
 # Also will take some time
 df_bike_accidents_in_region['nearest_node'] = Tagger.tag_crashes(df_bike_accidents_in_region,G)
+
+df_bike_accidents_in_region.to_csv('./CleanedData/accidents_with_nodes')
 df_save2 = df_bike_accidents_in_region.copy()
 df_bike_accidents_in_region = df_save2.copy()
 
@@ -136,7 +147,7 @@ df_accidents_train = df_bike_accidents_in_region[df_bike_accidents_in_region['CR
 
 Tagger.number_of_crashes_at_a_node(df_accidents_train,df_nodes)
 
-G_undirected_with_traffic_weights = ox.utils_graph.graph_from_gdfs(df_nodes,df_edges)
+G_undirected_with_traffic_weights = ox.utils_graph.graph_from_gdfs(df_nodes,df_edges_undirected)
 fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=df_nodes['number_of_accidents'],edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
 
 

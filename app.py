@@ -97,6 +97,14 @@ def get_gdfs():
     gdf_nodes = pd.read_pickle('./nodes.pkl')
     gdf_edges = pd.read_pickle('./edges.pkl')
     return gdf_nodes, gdf_edges
+
+@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
+def get_graph(gdf_nodes,gdf_edges):
+    #Returns: nodes and edges from pickle
+    #Cached by Streamlit
+
+    return ox.graph_from_gdfs(gdf_nodes,gdf_edges)
+
 #
 # @st.cache(suppress_st_warning=True, allow_output_mutation=True)
 # def set_walking_rate(rate):
@@ -537,40 +545,14 @@ gdf_nodes, gdf_edges = get_gdfs()
 gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
 
 G = ox.graph_from_gdfs(gdf_nodes,gdf_edges)
+
 # #Main
-st.header("Philadelphia Commutator")
+st.header("Cycle-Analyst of Downtown Philadelphia")
 st.header("")
 st.markdown('Plan your bike ride:')
 
 input1 = st.text_input('Input Start of Bike Ride:')
 input2 = st.text_input('Input End of Bike Ride:')
-#
-# select = st.selectbox(
-#     'Going out for a walk or to a park or somewhere else?',
-#     ('Going out for a walk', 'Take me to a park', 'Traveling somewhere else'))
-#
-# if select=='Traveling somewhere else':
-#     input2 = st.text_input('Where will the walk end?')
-#
-# dog_df = pd.read_csv('data/dogbreeds.csv')
-# dogs = dict(zip(dog_df['Name'], zip(dog_df['Exercise-Needs'], dog_df['Height']) ))
-#
-# temp = st.selectbox(
-#         'What route would you like to take?',
-#         ['The fastest','The safest','A nice balance (recommended)'])
-#
-# #Initial estimate for duration depends on dog breed
-# duration = st.number_input('How much time (minutes) do you have for this walk?', step = 5, value = 10 * int(1.2 * dogs[temp][0]))
-#
-# if duration > 60:
-#     st.write('This is a long walk! It might take a while to route...')
-#
-# #Estimate for walking speed depends on dog breed
-# #Vary by ~20% depending on dog height
-# walking_rate = set_walking_rate(80 - (15/14)*(14-dogs[temp][1])) #m/min
-#
-# #If we want to avoid busy streets, we adjust the edge weights later
-# avoid_busy_streets = st.checkbox('Keep me away from busy streets', value=False, key=1)
 #
 submit = st.button('Calculate route - Go!', key=1)
 if not submit:
