@@ -556,7 +556,6 @@ input2 = st.text_input('Input End of Bike Ride:')
 submit = st.button('Calculate route - Go!', key=1)
 if not submit:
     st.pydeck_chart(pdk.Deck(
-        map_style="mapbox://styles/mapbox/light-v9",
         initial_view_state=pdk.ViewState(latitude = 39.9526, longitude = -75.1652, zoom=11)))
 else:
     with st.spinner('Routing...'):
