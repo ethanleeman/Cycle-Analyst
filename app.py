@@ -5,7 +5,6 @@ import pandas as pd
 import networkx as nx
 import osmnx as ox
 from streamlit import caching
-caching.clear_cache()
 
 #
 def get_node_df(location):
@@ -544,7 +543,7 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
 gdf_nodes, gdf_edges = get_gdfs()
 gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
 
-G = ox.graph_from_gdfs(gdf_nodes,gdf_edges)
+G = get_graph(gdf_nodes,gdf_edges)
 
 # #Main
 st.header("Cycle-Analyst of Downtown Philadelphia")
