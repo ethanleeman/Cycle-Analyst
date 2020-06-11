@@ -5,7 +5,7 @@ import pandas as pd
 import networkx as nx
 import osmnx as ox
 from streamlit import caching
-
+import SessionState
 #
 def get_node_df(location):
     #Inputs: location as tuple of coords (lat, lon)
@@ -157,237 +157,23 @@ def nodes_to_lats_lons(nodes, path_nodes):
         dest_lons.append(nodes.loc[path_nodes[i+1]]['x'])
 
     return (source_lats, source_lons, dest_lats, dest_lons)
-#
-# ############################################################################
-#
-# def beautreeful_node(G, node_list):
-#     #Inputs: G, list of nodes
-#     #Returns: list of nodes rich in trees to route to
-#     best_node = node_list[0]
-#     best_node_score = 0
-#     best_neighbors = []
-#
-#     tree_df = pd.read_csv('data/combined_nodetrees.csv')
-#
-#     #For each promising node
-#     for i in node_list:
-#         #If that node has trees
-#         if i in tree_df.node.values:
-#             #Keep track of tree score
-#             #Initialize to trees nearest that node
-#             tree_score = tree_df[tree_df.node==i].trees.tolist()[0]
-#
-#             #Find tree counts of that node's neighbors
-#             neighbors = G.neighbors(i)
-#             neighbor_ids = []
-#             neighbor_scores = []
-#             for neighbor in neighbors:
-#                 #If the neighboring node has trees
-#                 if neighbor in tree_df.node.values:
-#                     #Keep track of its trees and ID
-#                     neighbor_trees = tree_df[tree_df.node==neighbor].trees.tolist()[0]
-#                     neighbor_scores.append(neighbor_trees)
-#                     neighbor_ids.append(neighbor)
-#
-#                 #Place neighbor IDs in order of their tree scores
-#                 neighbor_ids = [x for _,x in sorted(zip(neighbor_scores, neighbor_ids), reverse=True)]
-#
-#             if len(neighbor_ids) > 0:
-#                 #We include neighbor's tree counts into this calculation
-#                 tree_score += int(sum(neighbor_scores)/max(1,len(neighbor_ids)))
-#
-#             if tree_score > best_node_score:
-#                 best_neighbors = neighbor_ids[:]
-#                 best_node_score = tree_score
-#                 best_node = i
-#
-#     if len(best_neighbors) < 1:
-#         return [best_node]
-#     elif len(best_neighbors) == 1:
-#         return [best_node, best_neighbors[0]]
-#     else:
-#         return [best_neighbors[0], best_node, best_neighbors[1]]
-#
-# def find_midpoint(G, start_node, dist):
-#     #Inputs: G, index of start_node, distance of walk
-#     #Returns: index of midpoint_node, list of indices of nodes along path to midpoint
-#
-#     #Step 1: Identify contender midpoints within factor1*dist
-#     factor1 = 0.5
-#     contender_midpoints = nx.single_source_dijkstra(G, start_node, weight = 'length', cutoff = factor1*dist)
-#     #Returns 2 dicts: first of end nodes:distance and second of end node:node path
-#
-#     #Dict [node index]:distance from start node
-#     contender_paths = contender_midpoints[0]
-#
-#     #All contender nodes that are within factor2 of target length
-#     factor2 = 0.9
-#     farthest_node_considered = max(contender_paths.values())
-#     midpoint_nodes = [k for (k, v) in contender_paths.items() if v >= factor2*farthest_node_considered]
-#
-#     #Step 2: Find contender midpoint node in a tree-rich area
-#     midpoints = beautreeful_node(G, midpoint_nodes)
-#
-#     return midpoints
-#
-# def find_park(G, parks, start_node, start_location, dist):
-#     #Inputs: G, parks df, index of start_node, coords of start_node, distance of walk
-#     #Returns: index of midpoint_node index of chosen park
-#
-#     #Find a park close to 1/2 distance
-#     dists = []
-#     for row in parks.itertuples():
-#         dists.append(get_dist(getattr(row,'lat'), getattr(row,'lon'), start_location[0], start_location[1]))
-#
-#     #Find a park closest to factor*the distance you'd like to travel
-#     factor = 0.5
-#     dists = [abs(x-factor*dist) for x in dists]
-#
-#     #Identify node closest to coordinates of chosen park
-#     index = dists.index(min(dists))
-#     midpoint_coords = (parks.iloc[index]['lat'], parks.iloc[index]['lon'])
-#     midpoint = ox.get_nearest_node(G, midpoint_coords)
-#
-#     return midpoint, index
-#
-# def source_to_source(G, gdf_nodes, gdf_edges, s, dist, to_park, avoid_streets):
-#     #Inputs: Graph, nodes, edges, source, distance to walk, to_park bool = route to park, avoid_streets bool = avoid busy roads
-#
-#     #Set default source to Insight Offices
-#     if s == '':
-#         #No address, default to Insight
-#         st.write('Source address not found, defaulting to Insight Offices')
-#         s = '280 Summer St Boston'
-#         start_location = ox.geo_utils.geocode(s)
-#     else:
-#         try:
-#             start_location = ox.geo_utils.geocode(s + ' Boston')
-#         except:
-#             #No address found, default to Insight
-#             st.write('Source address not found, defaulting to Insight Offices')
-#             s = '280 Summer St Boston'
-#             start_location = ox.geo_utils.geocode(s)
-#
-#     #Get coordinates from start address and snap to node
-#     start_coords = (start_location[0], start_location[1])
-#     start_node = ox.get_nearest_node(G, start_coords)
-#
-#     #Calculate new edge weights
-#     tree_counts = {}
-#     road_safety = {}
-#     lengths = {}
-#
-#     for row in gdf_edges.itertuples():
-#         u = getattr(row,'u')
-#         v = getattr(row,'v')
-#         key = getattr(row, 'key')
-#         tree_count = getattr(row, 'trees')
-#         safety_score = getattr(row, 'safety')
-#         length = getattr(row, 'length')
-#
-#         tree_counts[(u,v,key)] = tree_count
-#         road_safety[(u,v,key)] = safety_score
-#         lengths[(u,v,key)] = length
-#
-#     #Optimized attribute is a weighted combo of normal length, tree counts, and road safety.
-#     #Larger value is worse
-#     optimized = {}
-#     for key in lengths.keys():
-#         temp = int(lengths[key])
-#         temp += int(250/int(max(1,tree_counts[key])))
-#         if avoid_streets:
-#             temp += int(100*(road_safety[key]))
-#         optimized[key] = temp
-#
-#     #Generate new edge attributes - depending on user prefs
-#     nx.set_edge_attributes(G, optimized, 'optimized')
-#
-#     if to_park:
-#         #Get coords of park and path to it
-#         parks = pd.read_csv('data/parks.csv')
-#         midpoint, park_index = find_park(G, parks, start_node, start_location, dist)
-#
-#         #Get path to park
-#         path = nx.shortest_path(G, start_node, midpoint, weight = 'optimized')
-#
-#         #Display name of park on the map
-#         text_layer = make_textlayer(get_text_df(parks.iloc[park_index]['Name'], (parks.iloc[park_index]['lat'], parks.iloc[park_index]['lon'])), '[0,0,0]')
-#
-#     else:
-#         #Get coords of midpoint nodes
-#         midpoints = find_midpoint(G, start_node, dist)
-#
-#         #Get path to midpoint
-#         path = nx.shortest_path(G, start_node, midpoints[0], weight = 'optimized')
-#
-#         if len(midpoints) > 1:
-#             path.append(midpoints[1])
-#         if len(midpoints) > 2:
-#             path.append(midpoints[2])
-#
-#         #Dummy code because we are not outputting text
-#         text_layer = make_textlayer(get_text_df('', start_coords), '[255,255,255]')
-#
-#     #Step 3: Adjust edge weights to penalize backtracking
-#     for node in range(-1+len(path)):
-#         G[path[node]][path[node+1]][0]['optimized'] += 300
-#
-#     #Step 4: Get new route back
-#     if to_park:
-#         route_back = nx.shortest_path(G, start_node, midpoint, weight = 'optimized')
-#     else:
-#         route_back = nx.shortest_path(G, start_node, midpoints[len(midpoints)-1], weight = 'optimized')
-#
-#     #Step 5: Reset edge weights
-#     for node in range(-1+len(path)):
-#         G[path[node]][path[node+1]][0]['optimized'] -= 300
-#
-#     #Step 6: Plot route
-#     loop1_start_lat, loop1_start_lon, loop1_dest_lat, loop1_dest_lon = nodes_to_lats_lons(gdf_nodes, path)
-#     loop2_start_lat, loop2_start_lon, loop2_dest_lat, loop2_dest_lon = nodes_to_lats_lons(gdf_nodes, route_back)
-#
-#     #This finds the bounds of the final map to show based on the paths
-#     min_x, max_x, min_y, max_y = get_map_bounds(gdf_nodes, path, route_back)
-#
-#     #Find the average lat/long to center the map
-#     center_x = 0.5*(max_x + min_x)
-#     center_y = 0.5*(max_y + min_y)
-#
-#     #Move coordinates into dfs
-#     loop1_df = pd.DataFrame({'startlat':loop1_start_lat, 'startlon':loop1_start_lon, 'destlat': loop1_dest_lat, 'destlon':loop1_dest_lon})
-#     loop2_df = pd.DataFrame({'startlat':loop2_start_lat, 'startlon':loop2_start_lon, 'destlat': loop2_dest_lat, 'destlon':loop2_dest_lon})
-#
-#     #Add map marker icon at start
-#     start_node_df = get_node_df(start_location)
-#     outbound_layer = make_linelayer(loop1_df, '[150,150,220]')
-#     inbound_layer = make_linelayer(loop2_df, '[220,50,50]')
-#     icon_layer = make_iconlayer(start_node_df)
-#
-#     st.pydeck_chart(pdk.Deck(
-#         map_style="mapbox://styles/mapbox/light-v9",
-#         initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom = 13, max_zoom = 15, min_zoom = 12),
-#         layers=[text_layer, outbound_layer, inbound_layer, icon_layer]))
-#
-#     st.write('From your location, take the blue path to the turnaround point. Then return via the red path.')
-#     return
-#
-# ############################################################################
-#
+
+
 def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     #Inputs: Graph, nodes, edges, source, end, distance to walk, pace = speed, w2 bool = avoid busy roads
 
     if s == '':
         #No address, default to City Hall
-        st.write('Source address not found, defaulting to City Hall Station')
-        s = 'City Hall Station Philadelphia'
+        st.write('Source address not found, defaulting to Independence National Historical Park')
+        s = 'Independence National Historical Park Philadelphia'
         start_location = ox.utils_geo.geocode(s)
     else:
         try:
             start_location = ox.utils_geo.geocode(s + ' Philadelphia')
         except:
             #No address found, default to City Hall
-            st.write('Source address not found, defaulting to City Hall')
-            s = '1400 John F Kennedy Blvd Philadelphia'
+            st.write('Source address not found, defaulting to Independence National Historical Park')
+            s = 'Independence National Historical Park Philadelphia'
             start_location = ox.utils_geo.geocode(s)
 
     if e == '':
@@ -525,38 +311,76 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     route_2_probability = sum(ox.utils_graph.get_route_edge_attributes(G,safe_route,'probability'))
     route_3_length      = sum(ox.utils_graph.get_route_edge_attributes(G,balanced_route,'length'))
     route_3_probability = sum(ox.utils_graph.get_route_edge_attributes(G,balanced_route,'probability'))
-    st.write('The red is the fastest, green is the safest, yellow is a balance.')
-    st.write('Short Route (red)  length     : ' + str(int(route_1_length)) + ' meters')
-    st.write('Short Route (red)  prob       : once in ' + str(int(1/route_1_probability)) +' rides')
-    st.write('Safe Route (green) length     : ' + str(int(route_2_length))  + ' meters')
-    st.write('Safe Route (green) prob       : once in ' + str(int(1/route_2_probability))+' rides')
-    st.write('Balanced Route (yellow) length: ' + str(int(route_3_length))  + ' meters')
-    st.write('Balanced Route (yellow) prob  : once in ' + str(int(1/route_3_probability))+' rides')
+
+    df = pd.DataFrame({'A' : ['Color','Distance (meters)','Decrease of accidents'],
+                        'Fastest Route':['Red',int(route_1_length),'No decrease (0%)'],
+                        'Safest Route':['Green',int(route_2_length),str(int((1-route_2_probability/route_1_probability)*100)) +'% reduction'],
+                        'Safe/Fast Balance':['Yellow',int(route_3_length),str(int((1-route_3_probability/route_1_probability)*100)) +'% reduction']})
+    df = df.set_index('A')
+    st.write(df)
+    st.write('Bubbles on map: How many accidents have happened at this intersection in the last 20 years. Green and Yellow routes will try to avoid these \'accident hotspots\'.')
+
+
+    # st.write('The red is the fastest, green is the safest, yellow is a balance.')
+    # st.write('Short Route (red)  length     : ' + str(int(route_1_length)) + ' meters')
+    # st.write('Short Route (red)  prob       : once in ' + str(int(1/route_1_probability)) +' rides')
+    # st.write('Safe Route (green) length     : ' + str(int(route_2_length))  + ' meters')
+    # st.write('Safe Route (green) prob       : once in ' + str(int(1/route_2_probability))+' rides')
+    # st.write('Balanced Route (yellow) length: ' + str(int(route_3_length))  + ' meters')
+    # st.write('Balanced Route (yellow) prob  : once in ' + str(int(1/route_3_probability))+' rides')
 
 
 
     return
 #
 # ############################################################################
+@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
+def get_graph_from_pickle(path):
+    return nx.read_gpickle('./graph.pkl')
 
-
-gdf_nodes, gdf_edges = get_gdfs()
-gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
-
-G = get_graph(gdf_nodes,gdf_edges)
 
 # #Main
 st.header("Cycle-Analyst of Downtown Philadelphia")
 st.header("")
 st.markdown('Plan your bike ride:')
 
+origin_def = 'Independence National Historical Park Philadelphia'
+destination_def = '3401 Walnut St Philadelphia'
+
+state = SessionState.get(origin=origin_def,destination=destination_def)
+
 input1 = st.text_input('Input Start of Bike Ride:')
 input2 = st.text_input('Input End of Bike Ride:')
-#
-submit = st.button('Calculate route - Go!', key=1)
-if not submit:
-    st.pydeck_chart(pdk.Deck(
-        initial_view_state=pdk.ViewState(latitude = 39.9526, longitude = -75.1652, zoom=11)))
-else:
-    with st.spinner('Routing...'):
-        source_to_dest(G, gdf_nodes, gdf_edges, input1, input2)
+
+
+
+#submit = st.button('Calculate route - Go!', key=1)
+if st.button('Calculate route - Go!'):
+    state.origin = input1
+    state.destination = input2
+with st.spinner('Making Graph...'):
+    gdf_nodes, gdf_edges = get_gdfs()
+gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
+with st.spinner('Building Local Network...'):
+    G = get_graph_from_pickle('./graph.pkl')
+    #G = get_graph(gdf_nodes,gdf_edges)
+with st.spinner('Routing...'):
+    source_to_dest(G, gdf_nodes, gdf_edges, state.origin, state.destination)
+
+# gdf_nodes = pd.read_pickle('./nodes.pkl')
+# gdf_edges = pd.read_pickle('./edges.pkl')
+# G = ox.graph_from_gdfs(gdf_nodes,gdf_edges)
+# nx.write_gpickle(G,'./graph.pkl',protocol = 4)
+
+# if not submit:
+#     st.pydeck_chart(pdk.Deck(
+#         initial_view_state=pdk.ViewState(latitude = 39.9526, longitude = -75.1652, zoom=11)))
+# else:
+#     with st.spinner('Making Graph...'):
+#         gdf_nodes, gdf_edges = get_gdfs()
+#     with st.spinner('2'):
+#         gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
+#     with st.spinner('Building Local Network...'):
+#         G = get_graph(gdf_nodes,gdf_edges)
+#     with st.spinner('Routing...'):
+#         source_to_dest(G, gdf_nodes, gdf_edges, input1, input2)
