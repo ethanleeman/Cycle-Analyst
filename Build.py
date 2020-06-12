@@ -78,6 +78,7 @@ df_bike_accidents_in_region.plot.scatter(x='DEC_LONG',y='DEC_LAT',s=0.5)
 # This takes some time (10min on my local machine)
 df_traffic_studies_in_region['closest_edge'] = Tagger.give_each_traffic_an_edge(df_traffic_studies_in_region,G_undirected)
 df_save1 = df_traffic_studies_in_region.copy()
+df_save1.to_csv('./CleanedData/save1')
 df_traffic_studies_in_region = df_save1.copy()
 
 
@@ -112,12 +113,16 @@ df_traffic_grouped_with_features_no_encoding.to_csv('./CleanedData/traffic_studi
 #df_traffic_grouped_with_features_train = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] != 2016]
 df_traffic_grouped_with_features_train = df_traffic_grouped_with_features
 
+df_traffic_grouped_with_features_train.describe()
+
 df_undirected_edges_with_features.columns
 df_edges_directed.drop(['u','v','key','osmid'],axis=1).count() / 25256
 
+df_traffic_grouped_with_features_train.head()
 # set up for model
 traffic_x = df_traffic_grouped_with_features_train.drop(['u','v','key','aadb','osmid','geometry'],axis=1)
 traffic_y = df_traffic_grouped_with_features_train['aadb']
+
 
 # Traffic Model
 regr = RandomForestRegressor(max_depth=10, random_state=0)
@@ -129,7 +134,7 @@ df_undirected_edges_with_features['setyear'] = 2018
 traffic_as_input = df_undirected_edges_with_features.drop(['u','v','key','osmid','geometry'],axis=1).sort_index(axis=1)
 df_edges_undirected['aadb_predictions'] = regr.predict(traffic_as_input)
 
-G_undirected_with_traffic_weights = ox.graph_from_gdfs(df_nodes,df_edges)
+G_undirected_with_traffic_weights = ox.graph_from_gdfs(df_nodes,df_edges_undirected)
 
 
 ## uncomment for traffic model EDA
@@ -141,9 +146,10 @@ df_bike_accidents_in_region['nearest_node'] = Tagger.tag_crashes(df_bike_acciden
 
 df_bike_accidents_in_region.to_csv('./CleanedData/accidents_with_nodes')
 df_save2 = df_bike_accidents_in_region.copy()
+df_save2.to_csv('./CleanedData/save2')
 df_bike_accidents_in_region = df_save2.copy()
 
-df_accidents_train = df_bike_accidents_in_region[df_bike_accidents_in_region['CRASH_YEAR'] != 2016]
+df_accidents_train = df_bike_accidents_in_region
 
 Tagger.number_of_crashes_at_a_node(df_accidents_train,df_nodes)
 
@@ -180,25 +186,25 @@ def give_probabilities_to_edges(df_edges,df_nodes):
 
 
 
-give_probabilities_to_edges(df_edges,df_nodes)
+give_probabilities_to_edges(df_edges_undirected,df_nodes)
 
 fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=df_nodes['adjusted accidents/aadb']*1000000,edge_linewidth=0,edge_color=ec,node_alpha = 1,node_color='w', bgcolor='k',use_geom=True, axis_off=False,show=False, close=False)
 
-fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['probability']*70000,use_geom=True, axis_off=False,show=False, close=False)
+fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges_undirected['probability']*70000,use_geom=True, axis_off=False,show=False, close=False)
 
 
-fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['length']*.001,use_geom=True, axis_off=False,show=False, close=False)
+fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges_undirected['length']*.001,use_geom=True, axis_off=False,show=False, close=False)
 
 
-f = df_edges['length'].mean() / df_edges['probability'].mean()
-df_edges['balanced_weight'] = df_edges.apply(lambda x: x['length'] + x['probability']*f*2,axis=1)
-df_edges[['length','probability','balanced_weight']].head(20)
-fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges['balanced_weight']*.001,use_geom=True, axis_off=False,show=False, close=False)
-df_edges['length'].div(df_edges['balanced_weight']).mean()
+f = df_edges_undirected['length'].mean() / df_edges_undirected['probability'].mean()
+df_edges_undirected['balanced_weight'] = df_edges_undirected.apply(lambda x: x['length'] + x['probability']*f,axis=1)
+df_edges_undirected[['length','probability','balanced_weight']].head(20)
+fig,ax = ox.plot_graph(G_undirected_with_traffic_weights, node_zorder=2,node_size=0.00,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=df_edges_undirected['balanced_weight']*.001,use_geom=True, axis_off=False,show=False, close=False)
+#df_edges['length'].div(df_edges['balanced_weight']).mean()
 
 df_edges_final_one_way = ox.graph_to_gdfs(DataLoader.load_graph(name,north,south,east,west),nodes=False)
-df_edges_final_one_way_with_weights = pd.merge(df_edges_final_one_way,df_edges[['u','v','probability','balanced_weight']],how='left',on=['u','v'])
-df_edges_swapped = df_edges.copy()
+df_edges_final_one_way_with_weights = pd.merge(df_edges_final_one_way,df_edges_undirected[['u','v','probability','balanced_weight']],how='left',on=['u','v'])
+df_edges_swapped = df_edges_undirected.copy()
 df_edges_swapped['t'] = df_edges_swapped['u']
 df_edges_swapped['u'] = df_edges_swapped['v']
 df_edges_swapped['v'] = df_edges_swapped['t']
@@ -206,8 +212,17 @@ df_edges_final_one_way_with_weights = pd.merge(df_edges_final_one_way_with_weigh
 df_edges_final_one_way_with_weights['probability'] = df_edges_final_one_way_with_weights.fillna(0)[['probability_x','probability_y']].max(axis=1)
 df_edges_final_one_way_with_weights['balanced_weight'] = df_edges_final_one_way_with_weights.fillna(0)[['balanced_weight_x','balanced_weight_y']].max(axis=1)
 
+df_edges_final_one_way_with_weights = df_edges_final_one_way_with_weights[['u','v','key','osmid','length','geometry','probability','balanced_weight']]
+df_edges_final_one_way_with_weights.head(1)
 final_G = ox.graph_from_gdfs(df_nodes,df_edges_final_one_way_with_weights)
-
+nx.is_strongly_connected(final_G)
+len(final_G)
+nx.number_strongly_connected_components(final_G)
+len(max(nx.strongly_connected_components(final_G), key=len))
+final_G = final_G.subgraph(max(nx.strongly_connected_components(final_G), key=len))
+df_nodes = ox.graph_to_gdfs(final_G,edges=False)
+df_edges_final_one_way_with_weights = ox.graph_to_gdfs(final_G,nodes=False)
+final_G = ox.graph_from_gdfs(df_nodes,df_edges_final_one_way_with_weights)
 
 orig = ox.get_nearest_node(final_G,(south+(north-south)*.5,west+(east-west)*.7))
 dest = ox.get_nearest_node(final_G,(south+(north-south)*.2,west+(east-west)*.7))
@@ -236,7 +251,7 @@ ox.plot_graph_route(final_G, route_3, route_linewidth =  6, node_size = df_nodes
 
 df_nodes.to_pickle('./nodes.pkl',protocol = 4)
 df_edges_final_one_way_with_weights.to_pickle('./edges.pkl',protocol = 4)
-
+nx.write_gpickle(final_G,'./graph.pkl',protocol = 4)
 
 
 df_traffic_test = df_traffic_grouped_with_features[df_traffic_grouped_with_features['setyear'] == 2016]

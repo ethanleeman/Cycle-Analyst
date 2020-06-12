@@ -24,10 +24,16 @@ model = h2o.estimators.H2ORandomForestEstimator(ntrees=50, max_depth=20, nfolds=
 
 
 studies = pd.read_csv('./CleanedData/traffic_studies_with_features')
-studies.columns
+studies = studies[studies['setyear'] < 2019]
+len(studies)
+#means_by_year = studies.groupby('setyear').mean()['aadb']
+#means_by_year[2010]
+#studies['adjusted aadb to 2018'] = studies.apply(lambda x: x['aadb']/means_by_year.loc[x['setyear']]*means_by_year.loc[2018],axis=1)
+
 studies = studies.drop(['Unnamed: 0','setyear', 'u', 'v', 'key', 'osmid', 'geometry'],axis=1)
 
 studies_no_encoding = pd.read_csv('./CleanedData/traffic_studies_with_features_no_encoding')
+
 studies_no_encoding = studies_no_encoding.drop(['Unnamed: 0','setyear', 'u', 'v', 'key', 'osmid', 'geometry'],axis=1)
 
 response='aadb'
@@ -76,11 +82,12 @@ cv_results['test_score'].mean()
 clf = make_pipeline(preprocessing.StandardScaler(),RandomForestRegressor(max_depth=10, random_state=0))
 cv_results = cross_validate(clf, X, y, scoring = 'neg_mean_absolute_error',cv=479)
 pd.Series(-cv_results['test_score']).mean()
-
+(pd.Series(cv_results['test_score'])**2).mean()
 
 clf = make_pipeline(preprocessing.StandardScaler(),RandomForestRegressor(max_depth=10, random_state=0))
 cv_results = cross_validate(clf, X, y, scoring = 'neg_mean_squared_error',cv=479)
 cv_results['test_score'].mean()
+
 
 ## KNN Regression
 clf = make_pipeline(preprocessing.StandardScaler(),KNeighborsRegressor(n_neighbors=4))
@@ -96,10 +103,16 @@ model.fit(X_train,y_train)
 y_test.hist()
 
 np.sqrt(163458.8413393822)
-np.sqrt(((y_train-493)**2).mean())
-y_train.mean()
-y_train.mean()
+
+((studies['adjusted aadb to 2018']-studies['adjusted aadb to 2018'].mean())**2).mean()
+234**2
+
+np.sqrt(((studies['adjusted aadb to 2018']-studies['adjusted aadb to 2018'].mean())**2).sum())
+np.abs(studies['aadb']-studies['aadb'].mean()).mean()
+studies['aadb'].mean()
+y_train.describe()
+
 
 pd.Series(-cv_results['test_score'])
 
-abs(y_train-y_train.mean()).mean()
+np.sqrt(((y_train-y_train.mean())**2)).mean()

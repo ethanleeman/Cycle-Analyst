@@ -30,13 +30,15 @@ def random_combination(iterable, r):
 
 distances = []
 distances2 = []
+distances3 = []
+distances4 = []
 len(years)
 years = range(1999,2018)
-num_training_years = 10
+num_training_years = 9
 corr = []
 t = time()
 count = 0
-while count < 10:
+while count < 100:
 #for i in itertools.combinations(years,num_training_years):
     i = random_combination(years,num_training_years)
     count += 1
@@ -48,22 +50,31 @@ while count < 10:
     mean = df_nodes_curr['accidents/aadb'].mean()
     std = df_nodes_curr['accidents/aadb'].std()
     alpha,beta = beta_values(mean,std)
+    alpha,beta = alpha,beta
     df_nodes_curr['accidents/aadb adjusted'] = (df_nodes_curr['number_of_accidents']+alpha).div(df_nodes_curr['aadb']* num_training_years * 365 +alpha+beta)
     number_of_crashes_at_a_node(test,df_nodes_curr,prefix='test_')
+
     df_nodes_curr['test_accidents/aadb'] = df_nodes_curr['test_number_of_accidents'].div(df_nodes_curr['aadb'] * (len(years) - num_training_years)*365)
-    distance = df_nodes_curr.cov().loc['test_accidents/aadb']['accidents/aadb adjusted']/ np.sqrt(df_nodes_curr.cov().loc['test_accidents/aadb']['test_accidents/aadb'] * df_nodes_curr.cov().loc['accidents/aadb adjusted']['accidents/aadb adjusted'])
-    distance2 = df_nodes_curr.cov().loc['test_accidents/aadb']['accidents/aadb']/ np.sqrt(df_nodes_curr.cov().loc['test_accidents/aadb']['test_accidents/aadb'] * df_nodes_curr.cov().loc['accidents/aadb']['accidents/aadb'])
-    distance3 = df_nodes_curr.cov().loc['test_accidents/aadb']['aadb']/ np.sqrt(df_nodes_curr.cov().loc['test_accidents/aadb']['test_accidents/aadb'] * df_nodes_curr.cov().loc['aadb']['aadb'])
+    cov = df_nodes_curr.cov()
+    distance = cov.loc['test_accidents/aadb']['accidents/aadb adjusted']/ np.sqrt(df_nodes_curr.cov().loc['test_accidents/aadb']['test_accidents/aadb'] * cov.loc['accidents/aadb adjusted']['accidents/aadb adjusted'])
+    distance2 = cov.loc['test_accidents/aadb']['accidents/aadb']/ np.sqrt(df_nodes_curr.cov().loc['test_accidents/aadb']['test_accidents/aadb'] * cov.loc['accidents/aadb']['accidents/aadb'])
+    distance3 = cov.loc['test_accidents/aadb']['aadb']/ np.sqrt(df_nodes_curr.cov().loc['test_accidents/aadb']['test_accidents/aadb'] * cov.loc['aadb']['aadb'])
+    distance4 = cov.loc['test_accidents/aadb']['number_of_accidents']/ np.sqrt(df_nodes_curr.cov().loc['test_accidents/aadb']['test_accidents/aadb'] * cov.loc['number_of_accidents']['number_of_accidents'])
 
     distances.append(distance)
     distances2.append(distance2)
-    print(distance, flush=True)
-    print(distance2, flush=True)
-    print(distance3, flush=True)
-
+    distances3.append(distance3)
+    distances4.append(distance4)
+    # print(distance, flush=True)
+    # print(distance2, flush=True)
+    # print(distance3, flush=True)
+    # print(distance4, flush=True)
+    # print()
 
 print(pd.Series(distances).mean())
 print(pd.Series(distances2).mean())
+print(pd.Series(distances3).mean())
+print(pd.Series(distances4).mean())
 print(time()-t)
 pd.Series(distances).mean()
 

@@ -301,24 +301,26 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
 
     accident_layer = make_accidentlayer(gdf_nodes[gdf_nodes['number_of_accidents']>0][['accidents_scaled','x','y']],'[0,250,250]')
 
-    st.pydeck_chart(pdk.Deck(
-        initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),
-        layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer]))
 
+    pdk_ret = pdk.Deck(initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer])
+    # st.pydeck_chart(pdk.Deck(
+    #     initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),
+    #     layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer]))
+    #
     route_1_length      = sum(ox.utils_graph.get_route_edge_attributes(G,shortest_route,'length'))
     route_1_probability = sum(ox.utils_graph.get_route_edge_attributes(G,shortest_route,'probability'))
     route_2_length      = sum(ox.utils_graph.get_route_edge_attributes(G,safe_route,'length'))
     route_2_probability = sum(ox.utils_graph.get_route_edge_attributes(G,safe_route,'probability'))
     route_3_length      = sum(ox.utils_graph.get_route_edge_attributes(G,balanced_route,'length'))
     route_3_probability = sum(ox.utils_graph.get_route_edge_attributes(G,balanced_route,'probability'))
-
+    #
     df = pd.DataFrame({'A' : ['Color','Distance (meters)','Decrease of accidents'],
                         'Fastest Route':['Red',int(route_1_length),'No decrease (0%)'],
                         'Safest Route':['Green',int(route_2_length),str(int((1-route_2_probability/route_1_probability)*100)) +'% reduction'],
                         'Safe/Fast Balance':['Yellow',int(route_3_length),str(int((1-route_3_probability/route_1_probability)*100)) +'% reduction']})
     df = df.set_index('A')
-    st.write(df)
-    st.write('Bubbles on map: How many accidents have happened at this intersection in the last 20 years. Green and Yellow routes will try to avoid these \'accident hotspots\'.')
+    # st.write(df)
+    # st.write('Bubbles on map: How many accidents have happened at this intersection in the last 20 years. Green and Yellow routes will try to avoid these \'accident hotspots\'.')
 
 
     # st.write('The red is the fastest, green is the safest, yellow is a balance.')
@@ -331,7 +333,7 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
 
 
 
-    return
+    return pdk_ret, df
 #
 # ############################################################################
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
@@ -339,33 +341,43 @@ def get_graph_from_pickle(path):
     return nx.read_gpickle('./graph.pkl')
 
 
+with st.spinner('Making Graph...'):
+    gdf_nodes, gdf_edges = get_gdfs()
+    gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
+with st.spinner('Building Local Network...'):
+    G = get_graph_from_pickle('./graph.pkl')
+    #G = get_graph(gdf_nodes,gdf_edges)
+accident_layer = make_accidentlayer(gdf_nodes[gdf_nodes['number_of_accidents']>0][['accidents_scaled','x','y']],'[0,250,250]')
+
+
+pdk_output = pdk.Deck(initial_view_state=pdk.ViewState(latitude = 39.9526, longitude = -75.1652, zoom=11),layers=[accident_layer])
+df_output = pd.DataFrame({'A' : ['Color','Distance (meters)','Decrease of accidents'],
+                    'Fastest Route':['Red','',' '],
+                    'Safest Route':['Green',' ',' '],
+                    'Safe/Fast Balance':['Yellow',' ',' ']})
+df_output = df_output.set_index('A')
+
+
+state = SessionState.get(pdk = pdk_output, df=df_output)
+
+
 # #Main
 st.header("Cycle-Analyst of Downtown Philadelphia")
 st.header("")
 st.markdown('Plan your bike ride:')
 
-origin_def = 'Independence National Historical Park Philadelphia'
-destination_def = '3401 Walnut St Philadelphia'
-
-state = SessionState.get(origin=origin_def,destination=destination_def)
-
 input1 = st.text_input('Input Start of Bike Ride:')
 input2 = st.text_input('Input End of Bike Ride:')
 
-
-
 #submit = st.button('Calculate route - Go!', key=1)
 if st.button('Calculate route - Go!'):
-    state.origin = input1
-    state.destination = input2
-with st.spinner('Making Graph...'):
-    gdf_nodes, gdf_edges = get_gdfs()
-gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
-with st.spinner('Building Local Network...'):
-    G = get_graph_from_pickle('./graph.pkl')
-    #G = get_graph(gdf_nodes,gdf_edges)
-with st.spinner('Routing...'):
-    source_to_dest(G, gdf_nodes, gdf_edges, state.origin, state.destination)
+    with st.spinner('Routing...'):
+        state.pdk,state.df = source_to_dest(G, gdf_nodes, gdf_edges, input1, input2)
+
+st.pydeck_chart(state.pdk)
+st.write(state.df)
+
+
 
 # gdf_nodes = pd.read_pickle('./nodes.pkl')
 # gdf_edges = pd.read_pickle('./edges.pkl')

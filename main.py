@@ -31,9 +31,9 @@ ox.settings.useful_tags_path = ['route','lcn','segregated','rcn','rcn_ref','lcn_
 
 polygon = philly
 
+edges = pd.read_pickle('./edges.pkl')
 
-
-
+edges.head()
 
 
 
