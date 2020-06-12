@@ -6,7 +6,8 @@ import networkx as nx
 import osmnx as ox
 from streamlit import caching
 import SessionState
-#
+
+
 def get_node_df(location):
     #Inputs: location as tuple of coords (lat, lon)
     #Returns: 1-line dataframe to display an icon at that location on a map
@@ -370,10 +371,12 @@ input1 = st.text_input('Input Start of Bike Ride:')
 input2 = st.text_input('Input End of Bike Ride:')
 
 #submit = st.button('Calculate route - Go!', key=1)
-if st.button('Calculate route - Go!'):
+if st.button('Calculate route'):
     with st.spinner('Routing...'):
         state.pdk,state.df = source_to_dest(G, gdf_nodes, gdf_edges, input1, input2)
 
+st.write('Blue bubbles correspond to number of accidents in the last 20 years.')
+st.write('We\'ll route you away from these \'accident hotspots\'.')
 st.pydeck_chart(state.pdk)
 st.write(state.df)
 
