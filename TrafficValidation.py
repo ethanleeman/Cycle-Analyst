@@ -88,11 +88,12 @@ clf = make_pipeline(preprocessing.StandardScaler(),RandomForestRegressor(max_dep
 cv_results = cross_validate(clf, X, y, scoring = 'neg_mean_squared_error',cv=479)
 cv_results['test_score'].mean()
 
+studies['aadb'].describe()
 
 ## KNN Regression
 clf = make_pipeline(preprocessing.StandardScaler(),KNeighborsRegressor(n_neighbors=4))
 cv_results = cross_validate(clf, X, y, scoring = 'neg_mean_squared_error',cv=479)
-cv_results['test_score'].mean()
+(cv_results['test_score']**2).mean()
 
 
 model = RandomForestRegressor(max_depth=5, random_state=0)
@@ -106,9 +107,9 @@ np.sqrt(163458.8413393822)
 
 ((studies['adjusted aadb to 2018']-studies['adjusted aadb to 2018'].mean())**2).mean()
 234**2
-
-np.sqrt(((studies['adjusted aadb to 2018']-studies['adjusted aadb to 2018'].mean())**2).sum())
-np.abs(studies['aadb']-studies['aadb'].mean()).mean()
+studies['aadb'].mean()**2
+((studies['aadb']-studies['aadb'].mean())**2).mean()
+np.abs(studies['aadb']-322).mean()
 studies['aadb'].mean()
 y_train.describe()
 

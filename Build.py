@@ -47,6 +47,7 @@ df_all_traffic_accidents = DataLoader.load_crashes()
 
 
 G = DataLoader.load_graph(name,north,south,east,west)
+
 polygon = DataLoader.load_polygon(name,query)
 
 # Using undirected graph to tag traffic studies
@@ -55,11 +56,32 @@ df_nodes = ox.graph_to_gdfs(G_undirected,edges=False)
 df_edges_undirected = ox.graph_to_gdfs(G_undirected,nodes=False)
 df_edges_directed = ox.graph_to_gdfs(G,nodes=False)
 
+df_edges_directed.head()
+
+'highway:cycleway', 'highway:living_street', 'highway:path',
+       'highway:pedestrian', 'highway:primary', 'highway:primary_link',
+       'highway:residential', 'highway:secondary', 'highway:secondary_link',
+       'highway:service', 'highway:tertiary', 'highway:tertiary_link',
+       'highway:track', 'highway:trunk', 'highway:trunk_link',
+       'highway:unclassified'
+
+ec = [
+  'blue' if data['highway']=='tertiary_link'
+  else 'green' if data['highway']=='residential'
+  else 'yellow' if data['highway']=='tertiary'
+  else 'orange' if data['highway']=='secondary'
+  else 'red' if data['highway']=='primary'
+  else 'blue' for u, v, key, data in G.edges(keys=True, data=True)]
+
+#this works, but is static
+ox.plot_graph(G,fig_height=8,fig_width=8,node_size=0, edge_color=ec)
+
 # Run cleaning Methods
 df_bike_accidents_in_region = DataCleaner.clean_crashes(df_all_traffic_accidents,polygon,north,south,east,west)
 df_traffic_studies_in_region = DataCleaner.clean_traffic(df_all_traffic_studies,polygon,north,south,east,west)
 df_undirected_edges_with_features = DataCleaner.edge_featurizer(df_edges_undirected,column_name_list)
 
+df_undirected_edges_with_features.columns
 
 len(df_traffic_studies_in_region)
 len(df_bike_accidents_in_region)
@@ -67,7 +89,7 @@ len(df_bike_accidents_in_region)
 ## some plots
 fig,ax = ox.plot_graph(G_undirected, node_zorder=2,node_size=0.03,node_alpha = 0.1,node_color='k', bgcolor='k', edge_linewidth=0.4,use_geom=True, axis_off=False,show=False, close=False)
 ax=df_bike_accidents_in_region.plot(kind='scatter',x='DEC_LONG',y='DEC_LAT',s=1,fig=fig,label='Bike Accident',ax=ax,color='r')
-ax = df_traffic_studies_in_region.plot(title='Plotting the 3 Main Datasets',kind='scatter',x='X',y='Y',s=1,c='g',label='Traffic Study',fig=fig,ax=ax)
+ax = df_traffic_studies_in_region.plot(title='Plotting the 3 Main Datasets',kind='scatter',x='X',y='Y',s=3,c='y',label='Traffic Study',fig=fig,ax=ax)
 
 df_traffic_studies_in_region.setyear.describe()
 df_traffic_studies_in_region.plot.scatter(x='setyear',y = 'aadb')

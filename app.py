@@ -8,6 +8,8 @@ from streamlit import caching
 import SessionState
 
 
+
+
 def get_node_df(location):
     #Inputs: location as tuple of coords (lat, lon)
     #Returns: 1-line dataframe to display an icon at that location on a map
@@ -362,6 +364,13 @@ df_output = df_output.set_index('A')
 state = SessionState.get(pdk = pdk_output, df=df_output)
 
 
+
+
+st.sidebar.markdown("## Welcome to the Cycle-Analyst!\n\n Enter an origin and destination, or press 'Calculate Route' for a default pair of locations. \n\n Some example inputs: \n\n - Points of Interest \n   - The Liberty Bell \n   - The Philadelphia Museum of Art \n - Neighborhoods \n     - Spring Garden \n   - Chinatown \n \n - Addresses \n    - 2000 Fitzwater St\n    - 1350 Walnut St")
+st.sidebar.markdown("Blue dots correspond to accidents that have occured at the intersection in the last 20 years. A larger dot means more accidents.")
+st.sidebar.markdown("The balanced route weighs both time and safety in equal amounts, often giving the best of both worlds! Compare all three routes in the table below the map.")
+st.sidebar.markdown("## Happy (and safe) cycling!")
+
 # #Main
 st.header("Cycle-Analyst of Downtown Philadelphia")
 st.header("")
@@ -375,8 +384,7 @@ if st.button('Calculate route'):
     with st.spinner('Routing...'):
         state.pdk,state.df = source_to_dest(G, gdf_nodes, gdf_edges, input1, input2)
 
-st.write('Blue bubbles correspond to number of accidents in the last 20 years.')
-st.write('We\'ll route you away from these \'accident hotspots\'.')
+
 st.pydeck_chart(state.pdk)
 st.write(state.df)
 
