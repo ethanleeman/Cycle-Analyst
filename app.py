@@ -6,7 +6,8 @@ import networkx as nx
 import osmnx as ox
 from streamlit import caching
 import SessionState
-
+from geopy.geocoders import Nominatim
+geolocator = Nominatim(user_agent="cycle-analyst")
 
 
 
@@ -16,7 +17,20 @@ def get_node_df(location):
 
     #Location of Map Marker icon
     icon_data = {
-        "url": "https://img.icons8.com/plasticine/100/000000/marker.png",
+        "url": "https://img.icons8.com/ultraviolet/80/000000/marker.png",
+        "width": 128,
+        "height":128,
+        "anchorY": 128}
+
+    return pd.DataFrame({'lat':[location[0]], 'lon':[location[1]], 'icon_data': [icon_data]})
+
+def get_node_df_end(location):
+    #Inputs: location as tuple of coords (lat, lon)
+    #Returns: 1-line dataframe to display an icon at that location on a map
+
+    #Location of Map Marker icon
+    icon_data = {
+        "url": "https://img.icons8.com/office/80/000000/marker.png",
         "width": 128,
         "height":128,
         "anchorY": 128}
@@ -56,7 +70,6 @@ def make_iconlayer(df):
 #         getColor = color_array,
 #         get_position='[lon, lat]')
 #
-
 
 
 def make_accidentlayer(df, color_array):
@@ -193,6 +206,15 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
             e = '3401 Walnut St Philadelphia'
             end_location = ox.utils_geo.geocode(e)
 
+    if start_location == end_location:
+        st.write('Source and Destination identical.')
+        st.write('Defaulting to Independence National Historical Park Philadelphia to University of Pennsylvania')
+        s = 'Independence National Historical Park Philadelphia'
+        start_location = ox.utils_geo.geocode(s)
+        e = '3401 Walnut St Philadelphia'
+        end_location = ox.utils_geo.geocode(e)
+
+
     #Get coordinates from addresses
     start_coords = (start_location[0], start_location[1])
     end_coords = (end_location[0], end_location[1])
@@ -299,13 +321,25 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     opt_df = pd.DataFrame({'startlat':opt_start_lat, 'startlon':opt_start_lon, 'destlat': opt_dest_lat, 'destlon':opt_dest_lon})
 
     start_node_df = get_node_df(start_location)
+    end_node_df = get_node_df_end(end_location)
     icon_layer = make_iconlayer(start_node_df)
+    icon_layer_end = make_iconlayer(end_node_df)
     optimized_layer = make_linelayer(opt_df, '[50,220,50]')
 
     accident_layer = make_accidentlayer(gdf_nodes[gdf_nodes['number_of_accidents']>0][['accidents_scaled','x','y']],'[0,250,250]')
 
 
-    pdk_ret = pdk.Deck(initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer])
+    pdk_ret = pdk.Deck(initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer,icon_layer_end],
+        tooltip={
+        'html': '<b>Number of accidentse:</b> {number_of_accidents}',
+        'style': {
+            'color': 'white'
+        }
+    })
+
+
+
+
     # st.pydeck_chart(pdk.Deck(
     #     initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),
     #     layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer]))
