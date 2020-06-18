@@ -157,7 +157,7 @@ def get_map_bounds(gdf_nodes, route1, route2,route3):
 
     return min_x, max_x, min_y, max_y
 #
-def nodes_to_lats_lons(nodes, path_nodes):
+def nodes_to_lats_lons(nodes, path_nodes,offset = 0):
     #Inputs: node df, and list of nodes along path
     #Returns: 4 lists of source and destination lats/lons for each step of that path for LineLayer
     #S-lon1,S-lat1 -> S-lon2,S-lat2; S-lon2,S-lat2 -> S-lon3,S-lat3...
@@ -167,10 +167,10 @@ def nodes_to_lats_lons(nodes, path_nodes):
     dest_lons = []
 
     for i in range(0,len(path_nodes)-1):
-        source_lats.append(nodes.loc[path_nodes[i]]['y'])
-        source_lons.append(nodes.loc[path_nodes[i]]['x'])
-        dest_lats.append(nodes.loc[path_nodes[i+1]]['y'])
-        dest_lons.append(nodes.loc[path_nodes[i+1]]['x'])
+        source_lats.append(nodes.loc[path_nodes[i]]['y']+offset)
+        source_lons.append(nodes.loc[path_nodes[i]]['x']+offset)
+        dest_lats.append(nodes.loc[path_nodes[i+1]]['y']+offset)
+        dest_lons.append(nodes.loc[path_nodes[i+1]]['x']+offset)
 
     return (source_lats, source_lons, dest_lats, dest_lons)
 
@@ -297,13 +297,15 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     short_layer = make_linelayer(short_df, '[200,000,000]')
 
 
+    offset = .001
+
     safe_route = nx.shortest_path(G, start_node, end_node, weight = 'probability')
-    safe_start_lat, safe_start_lon, safe_dest_lat, safe_dest_lon = nodes_to_lats_lons(gdf_nodes, safe_route)
+    safe_start_lat, safe_start_lon, safe_dest_lat, safe_dest_lon = nodes_to_lats_lons(gdf_nodes, safe_route,offset=0.00005)
     safe_df = pd.DataFrame({'startlat':safe_start_lat, 'startlon':safe_start_lon, 'destlat': safe_dest_lat, 'destlon':safe_dest_lon})
     safe_layer = make_linelayer(safe_df, '[000,200,0]')
 
     balanced_route = nx.shortest_path(G, start_node, end_node, weight = 'balanced_weight')
-    balanced_start_lat, balanced_start_lon, balanced_dest_lat, balanced_dest_lon = nodes_to_lats_lons(gdf_nodes, balanced_route)
+    balanced_start_lat, balanced_start_lon, balanced_dest_lat, balanced_dest_lon = nodes_to_lats_lons(gdf_nodes, balanced_route,offset=-0.00005)
     balanced_df = pd.DataFrame({'startlat':balanced_start_lat, 'startlon':balanced_start_lon, 'destlat': balanced_dest_lat, 'destlon':balanced_dest_lon})
     balanced_layer = make_linelayer(balanced_df, '[200,200,00]')
 
