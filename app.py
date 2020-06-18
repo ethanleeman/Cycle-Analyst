@@ -6,8 +6,8 @@ import networkx as nx
 import osmnx as ox
 from streamlit import caching
 import SessionState
-from geopy.geocoders import Nominatim
-geolocator = Nominatim(user_agent="cycle-analyst")
+#from geopy.geocoders import Nominatim
+#geolocator = Nominatim(user_agent="cycle-analyst")
 
 
 
