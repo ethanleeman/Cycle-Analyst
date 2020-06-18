@@ -331,13 +331,7 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
     accident_layer = make_accidentlayer(gdf_nodes[gdf_nodes['number_of_accidents']>0][['accidents_scaled','x','y']],'[0,250,250]')
 
 
-    pdk_ret = pdk.Deck(initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),layers=[short_layer,safe_layer,balanced_layer,accident_layer, icon_layer,icon_layer_end],
-        tooltip={
-        'html': '<b>Number of accidentse:</b> {number_of_accidents}',
-        'style': {
-            'color': 'white'
-        }
-    })
+    pdk_ret = pdk.Deck(initial_view_state=pdk.ViewState(latitude = center_y, longitude = center_x, zoom=13, max_zoom = 15, min_zoom = 12),layers=[short_layer,safe_layer,balanced_layer, icon_layer,icon_layer_end,accident_layer])
 
 
 
