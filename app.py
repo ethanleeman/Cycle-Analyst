@@ -109,8 +109,8 @@ def get_gdfs():
     #Returns: nodes and edges from pickle
     #Cached by Streamlit
 
-    gdf_nodes = pd.read_pickle('./nodes.pkl')
-    gdf_edges = pd.read_pickle('./edges.pkl')
+    gdf_nodes = pd.read_pickle('./data/app/nodes.pkl')
+    gdf_edges = pd.read_pickle('./data/app/edges.pkl')
     return gdf_nodes, gdf_edges
 
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
@@ -226,71 +226,6 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
 
 
 
-    #
-    # #Calculate new edge weights
-    # tree_counts = {}
-    # road_safety = {}
-    # lengths = {}
-    #
-    # for row in gdf_edges.itertuples():
-    #     u = getattr(row,'u')
-    #     v = getattr(row,'v')
-    #     key = getattr(row, 'key')
-    #     tree_count = getattr(row, 'trees')
-    #     safety_score = getattr(row, 'safety')
-    #     length = getattr(row, 'length')
-    #
-    #     tree_counts[(u,v,key)] = tree_count
-    #     road_safety[(u,v,key)] = safety_score
-    #     lengths[(u,v,key)] = length
-    #
-    # #We need to make sure that dist is at least the length of the shortest path
-    # min_dist = nx.shortest_path_length(G, start_node, end_node, weight = 'length')
-    #
-    # if dist < min_dist:
-    #     st.write('This walk will probably take a bit longer - approximately ' + str(int(min_dist/pace)) + ' minutes total.')
-    #
-    #     #We are in a rush, take the shortest path
-    #     optimized_route = nx.shortest_path(G, start_node, end_node, weight = 'length')
-    #
-    # #Optimized attribute is a weighted combo of normal length, tree counts, and road safety.
-    # #Larger value is worse
-    # elif dist < 1.3*min_dist:
-    #     #We have some extra time, length term still important
-    #     optimized = {}
-    #     for key in lengths.keys():
-    #         temp = int(lengths[key])
-    #         temp += int(250/int(max(1,tree_counts[key])))
-    #         if avoid_streets:
-    #             temp += int(100*(road_safety[key]))
-    #         optimized[key] = temp
-    #
-    #     #Generate new edge attribute
-    #     nx.set_edge_attributes(G, optimized, 'optimized')
-    #
-    #     #Path of nodes
-    #     optimized_route = nx.shortest_path(G, start_node, end_node, weight = 'optimized')
-    #
-    # else:
-    #     #dist > 1.3*min_dist
-    #     opt_dist = nx.shortest_path_length(G, start_node, end_node, weight = 'optimized')
-    #     if dist > 1.3*opt_dist:
-    #         st.write('You can take your time! The walk should only take approximately ' + str(int(opt_dist/pace)) + ' minutes.')
-    #     #We have a lot of extra time, let trees/safety terms dominate
-    #     optimized = {}
-    #     for key in lengths.keys():
-    #         temp = 0.2*int(lengths[key])
-    #         temp += int(250/int(max(1,tree_counts[key])))
-    #         if avoid_streets:
-    #             temp += int(100*(road_safety[key]))
-    #         optimized[key] = temp
-    #
-    #     #Generate new edge attributes
-    #     nx.set_edge_attributes(G, optimized, 'optimized')
-    #
-    #     #Path of nodes
-    #     optimized_route = nx.shortest_path(G, start_node, end_node, weight = 'optimized')
-
     shortest_route = nx.shortest_path(G, start_node, end_node, weight = 'length')
     short_start_lat, short_start_lon, short_dest_lat, short_dest_lon = nodes_to_lats_lons(gdf_nodes, shortest_route)
     short_df = pd.DataFrame({'startlat':short_start_lat, 'startlon':short_start_lon, 'destlat': short_dest_lat, 'destlon':short_dest_lon})
@@ -370,15 +305,16 @@ def source_to_dest(G, gdf_nodes, gdf_edges, s, e):
 #
 # ############################################################################
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
-def get_graph_from_pickle(path):
-    return nx.read_gpickle('./graph.pkl')
+def get_graph_from_pickle():
+    return nx.read_gpickle('./data/app/graph.pkl')
+
 
 
 with st.spinner('Making Graph...'):
     gdf_nodes, gdf_edges = get_gdfs()
     gdf_nodes['accidents_scaled'] = gdf_nodes['number_of_accidents']*5
 with st.spinner('Building Local Network...'):
-    G = get_graph_from_pickle('./graph.pkl')
+    G = get_graph_from_pickle()
     #G = get_graph(gdf_nodes,gdf_edges)
 accident_layer = make_accidentlayer(gdf_nodes[gdf_nodes['number_of_accidents']>0][['accidents_scaled','x','y']],'[0,250,250]')
 
