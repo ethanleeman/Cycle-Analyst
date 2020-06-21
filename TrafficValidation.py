@@ -25,6 +25,10 @@ model = h2o.estimators.H2ORandomForestEstimator(ntrees=50, max_depth=20, nfolds=
 
 studies = pd.read_csv('./CleanedData/traffic_studies_with_features')
 studies = studies[studies['setyear'] < 2019]
+studies.columns
+pd.options.display.max_rows = 999
+studies.mean()*len(studies)
+
 len(studies)
 #means_by_year = studies.groupby('setyear').mean()['aadb']
 #means_by_year[2010]
