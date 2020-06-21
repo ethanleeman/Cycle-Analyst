@@ -394,8 +394,6 @@ df_output = df_output.set_index('A')
 state = SessionState.get(pdk = pdk_output, df=df_output)
 
 
-
-
 st.sidebar.markdown("## Welcome to the Cycle-Analyst!\n\n Enter an origin and destination, or press 'Calculate Route' for a default pair of locations. \n\n Some example inputs: \n\n - Points of Interest \n   - The Liberty Bell \n   - The Philadelphia Museum of Art \n - Neighborhoods \n     - Spring Garden \n   - Chinatown \n \n - Addresses \n    - 2000 Fitzwater St\n    - 1350 Walnut St")
 st.sidebar.markdown("Blue dots correspond to accidents that have occured at the intersection in the last 20 years. A larger dot means more accidents.")
 st.sidebar.markdown("The balanced route weighs both time and safety in equal amounts, often giving the best of both worlds! Compare all three routes in the table below the map.")
